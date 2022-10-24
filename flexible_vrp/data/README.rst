@@ -1,1 +1,0 @@
-The data instances should be stored in this folder but not commited to git

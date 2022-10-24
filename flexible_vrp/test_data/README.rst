@@ -1,0 +1,1 @@
+Instances and solutions in json format should be stored here for testing purpose.

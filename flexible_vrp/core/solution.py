@@ -1,3 +1,5 @@
+# Class Solution is used to store the solution.
+
 import os
 
 from cornflow_client import SolutionCore

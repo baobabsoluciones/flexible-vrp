@@ -4,9 +4,9 @@ flexible-vrp
 Project structure
 ===================
 
-- documentation: project documentation in LaTeX.
+- analysis_tools: directory with tools functions used to analyse the solution.
 - data: input and solution data.
-- exploitation_tools: directory with tools functions used to exploit the solution.
+- documentation: project documentation in LaTeX.
 - flexible_vrp: source code of the application.
 
   + core: directory with the main classes of the app.

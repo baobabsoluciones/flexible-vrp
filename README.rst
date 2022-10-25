@@ -21,12 +21,49 @@ Project structure
 
 Useful commands
 ======================
+The following commands should be launched in pycharm terminal from the root folder ("flexible-vrp")
+
+Set up virtual environment
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Create the virtual environment
+
+``py -m venv ./venv/``
+
+Activate the virtual environment
+
+``venv\Scripts\activate``
+
+Install requirements (see next)
+
+Install library
+^^^^^^^^^^^^^^^^^^
+
+``pip install library_name``
 
 Install requirements
 ^^^^^^^^^^^^^^^^^^^^^^
 
 ``pip install -r requirements.txt``
 
+Reformat code with black
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Rformat a file or folder
+
+``black folder_name``
+
+Reformat the entire project
+
+``black .``
+
+In order to prevent black from reformating some code, add the following comments in the file::
+
+    # fmt: off
+    your code
+    # fmt: on
+
+
 Launch tests
 ^^^^^^^^^^^^^^
+
+``py -m unittest``
 

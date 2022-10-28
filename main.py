@@ -1,9 +1,10 @@
+from cornflow_client.core.tools import load_json
 from flexible_vrp import FlexibleVRP
 
 
 # Todo: create functions to read the config and data.
 config = {"solver": "basic_mip"}
-data = {"data": None}
+data = load_json("./data/simple_instance.json")
 
 # Solve the problem.
 app = FlexibleVRP()

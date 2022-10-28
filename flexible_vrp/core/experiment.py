@@ -1,7 +1,9 @@
 # Experiment is the class which is used to solve the problem.
+import os
 
 # Imports from cornflow libraries
 from cornflow_client import ExperimentCore, get_empty_schema
+from cornflow_client.core.tools import load_json
 
 # Imports from internal modules
 from .instance import Instance
@@ -9,8 +11,9 @@ from .solution import Solution
 
 
 class Experiment(ExperimentCore):
-
-    schema_checks = get_empty_schema()
+    schema_checks = load_json(
+        os.path.join(os.path.dirname(__file__), "../schemas/solution_checks.json")
+    )
 
     def __init__(self, instance: Instance, solution: Solution):
         super().__init__(instance, solution)

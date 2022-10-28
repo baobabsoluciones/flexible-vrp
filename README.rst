@@ -46,11 +46,11 @@ Install requirements
 ^^^^^^^^^^^^^^^^^^^^^^
 ::
 
-    pip install -r requirements.txt``
+    pip install -r requirements.txt
 
 Reformat code with black
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-Rformat a file or folder::
+Reformat a file or folder::
 
     black folder_name
 

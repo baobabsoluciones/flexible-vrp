@@ -44,6 +44,7 @@ def create_model():
     model.vBeta = Var(model.sVehicles, model.sStops, model.sVehicles, model.sStops, domain=Binary)
     model.vGamma = Var(model.sVehicles, model.sStops, domain=Binary)
 
+
     # Continuous Variables
     model.vArrivalTime = Var(model.sVehicles, model.sStops, domain=NonNegativeReals)
     model.vDepartureTime = Var(model.sVehicles, model.sStops, domain=NonNegativeReals)

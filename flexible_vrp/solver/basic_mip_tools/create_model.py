@@ -1,3 +1,4 @@
+import pandas as pd
 import xlrd
 from pyomo.environ import *
 
@@ -10,6 +11,7 @@ from pyomo.environ import *
 # De manera temporal y a modo de prueba he definido la localización en mi escritorio
 location = (r"C:\Users\maria\OneDrive - Universidad Politécnica de Madrid\datos1.xls")
 valor = xlrd.open_workbook(location)
+
 
 hoja_param = valor.sheet_by_name("parameters")
 hoja_warehouse = valor.sheet_by_name("warehouse")
@@ -69,37 +71,35 @@ def create_model():
         for j in range(3):
             listaTrip[i].append(hoja_trip_duration.cell_value(i,j))  #leer string
 
-    model.pOrigin =Param(, mutable=True)
-    model.pDestination = Param(, mutable=True)
-    model.pQuantity = Param(, mutable=True)
-    model.pReqCommodity = Param(, mutable=True)
-
 
 
     # Binary Variables
-    model.vAlpha = Var(model.sVehicles, model.sStops, model.sWarehouses) #domain=Binary)
-    model.vBeta1 = Var(model.sVehicles, model.sStops, model.sVehicles, model.sStops) # domain=Binary)
-    model.vBeta2 = Var(model.sVehicles, model.sStops, model.sVehicles, model.sStops) # domain=Binary)
-    model.vGamma = Var(model.sVehicles, model.sStops) # domain=Binary)
+    model.vAlpha = Var(model.sVehicles, model.sStops, model.sWarehouses, domain=Binary)
+    model.vBeta1 = Var(model.sVehicles, model.sStops, model.sVehicles, model.sStops, domain=Binary)
+    model.vBeta2 = Var(model.sVehicles, model.sStops, model.sVehicles, model.sStops, domain=Binary)
+    model.vGamma = Var(model.sVehicles, model.sStops, domain=Binary)
 
 
     # Continuous Variables
-    model.vArrivalTime = Var(model.sVehicles, model.sStops) # domain=NonNegativeReals)
-    model.vDepartureTime = Var(model.sVehicles, model.sStops) # domain=NonNegativeReals)
-    model.vUnloadTime = Var(model.sVehicles, model.sStops)# domain=NonNegativeReals)
-    model.vLoadDuration = Var(model.sVehicles, model.sStos)# domain=NonNegativeReals)
-    model.vUnloadDuration = Var(model.sVehicles, model.sStops) # domain=NonNegativeReals)
-    model.vQuantity = Var(model.sVehicles, model.sStops, model.sCommodities) # domain=NonNegativeReals)
-    model.vLoadQuantity = Var(model.sVehicles, model.sStops, model.sCommodities) # domain=NonNegativeReals)
-    model.vUnloadQuantity = Var(model.sVehicles, model.sStops, model.sCommodities) # domain=NonNegativeReals)
-    model.vTripDuration = Var(model.sTripDurationDomain) # domain=NonNegativeReals)
+    model.vArrivalTime = Var(model.sVehicles, model.sStops, domain=NonNegativeReals)
+    model.vDepartureTime = Var(model.sVehicles, model.sStops, domain=NonNegativeReals)
+    model.vUnloadTime = Var(model.sVehicles, model.sStops, domain=NonNegativeReals)
+    model.vLoadDuration = Var(model.sVehicles, model.sStos, domain=NonNegativeReals)
+    model.vUnloadDuration = Var(model.sVehicles, model.sStops, domain=NonNegativeReals)
+    model.vQuantity = Var(model.sVehicles, model.sStops, model.sCommodities, domain=NonNegativeReals)
+    model.vLoadQuantity = Var(model.sVehicles, model.sStops, model.sCommodities, domain=NonNegativeReals)
+    model.vUnloadQuantity = Var(model.sVehicles, model.sStops, model.sCommodities, domain=NonNegativeReals)
+    model.vTripDuration = Var(model.sTripDurationDomain, domain=NonNegativeReals)
 
     # Constraints
     def fcMaxVehCAP(model, v, s):
         return sum(model.vQuantity[v, s, c] for c in model.sCommodities) <= model.pCapacity
 
+    #def fcLodingCompulsoryCommodities(model, commodity):
+    #    sum(model.vLoadQuantity(truck, stop, commodity) for truck in model.sTrucks for stop in model.sStops) = commodity[2]
 
     # Activate constraints
+    # activar la restriccion2 model.Constraint(model.sCommoditiesCompusory, rule= fcLodingCompulsoryCommodities)
 
     return model
 

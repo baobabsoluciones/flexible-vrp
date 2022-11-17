@@ -21,33 +21,34 @@ def create_model():
     # Create model
     model = AbstractModel()
 
-    # Sets
-    listaVeh=[]
-    model.sVehicles = Set(listaVeh)
-    for i in range(hoja_param.cell_value(2, 1)):
-        listaVeh.append(i+1)
-
-    listaStops=[]
-    model.sStops = Set(listaStops)
-
-    listaW = []
-    model.sWarehouses = Set(listaW)
-    for i in range(): #hasta que el excel detecte la casilla vacía
-        listaW.append(hoja_warehouse.cell_value(i,0)) #como decirle que es str
-
-    listaCom = []
-    model.sCommodities = Set(listaCom)
-    for i in range(): #hasta que el excel detecte la casilla vacía
-        listaCom.append([])
-        for j in range(3):
-            listaCom[i].append(hoja_inst1.cell_value(i,j)) #str
+    # TO-DO: mover esto a lectura de datos
+    # # Sets
+    # listaVeh=[]
+    # model.sVehicles = Set(listaVeh)
+    # for i in range(hoja_param.cell_value(2, 1)):
+    #     listaVeh.append(i+1)
+    #
+    # listaStops=[]
+    # model.sStops = Set(listaStops)
+    #
+    # listaW = []
+    # model.sWarehouses = Set(listaW)
+    # for i in range(): #hasta que el excel detecte la casilla vacía
+    #     listaW.append(hoja_warehouse.cell_value(i,0)) #como decirle que es str
+    #
+    # listaCom = []
+    # model.sCommodities = Set(listaCom)
+    # for i in range(): #hasta que el excel detecte la casilla vacía
+    #     listaCom.append([])
+    #     for j in range(3):
+    #         listaCom[i].append(hoja_inst1.cell_value(i,j)) #str
 
 
     # Derived sets
     model.sTripDurationDomain = Set(dimen=3)
 
     # TO-DO: esto será la definición del conjunto
-    # vTripDurationDomain = [(v, s, s2) for v in sVehicles for s in sStops for s2 in sStops
+    # sTripDurationDomain = [(v, s, s2) for v in sVehicles for s in sStops for s2 in sStops
     #                       if sStops.index_set(s2) = sStops.index_set(s) + 1]
 
 
@@ -99,6 +100,8 @@ def create_model():
 
     # Activate constraints
     # activar la restriccion2 model.Constraint(model.sCommoditiesCompusory, rule= fcLodingCompulsoryCommodities)
+
+    model.cMaxVehCAP = Constraint(model.sVehicles, model.sStops, rule=fcMaxVehCAP)
 
     return model
 

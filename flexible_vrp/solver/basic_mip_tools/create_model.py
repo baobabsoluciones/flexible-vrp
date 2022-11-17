@@ -12,11 +12,10 @@ from pyomo.environ import *
 location = (r"C:\Users\maria\OneDrive - Universidad Politécnica de Madrid\datos1.xls")
 valor = xlrd.open_workbook(location)
 
-
-hoja_param = valor.sheet_by_name("parameters")
-hoja_warehouse = valor.sheet_by_name("warehouse")
-hoja_trip_duration = valor.sheet_by_name("trip_duration")
-hoja_inst1 = valor.sheet_by_name("comp_quantity_inst1")
+hoja_param = pd.read_excel("datos1.xlsx", sheet_name ="parameters")
+hoja_warehouse = pd.read_excel("datos1.xlsx", sheet_name ="warehouse")
+hoja_trip_duration = pd.read_excel("datos1.xlsx", sheet_name ="trip_duration")
+hoja_inst1 = pd.read_excel("datos1.xlsx", sheet_name ="comp_quantity_inst1")
 
 def create_model():
     # Create model

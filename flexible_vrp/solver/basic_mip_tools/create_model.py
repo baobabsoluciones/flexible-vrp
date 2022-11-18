@@ -21,7 +21,7 @@ def create_model():
     # Create model
     model = AbstractModel()
 
-    # TO-DO: mover esto a lectura de datos
+    # TODO: mover esto a lectura de datos
     # # Sets
     # listaVeh=[]
     # model.sVehicles = Set(listaVeh)

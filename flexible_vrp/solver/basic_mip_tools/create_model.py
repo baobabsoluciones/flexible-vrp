@@ -1,16 +1,10 @@
 import pandas as pd
-import xlrd
 from pyomo.environ import *
 
 # black won't reformat this file.
 # fmt: off
 
 # LECTURA DATOS
-
-# ¿Cómo defino la localicion al repositorio de GitHub?
-# De manera temporal y a modo de prueba he definido la localización en mi escritorio
-location = (r"C:\Users\maria\OneDrive - Universidad Politécnica de Madrid\datos1.xls")
-valor = xlrd.open_workbook(location)
 
 hoja_param = pd.read_excel("datos1.xlsx", sheet_name ="parameters")
 hoja_warehouse = pd.read_excel("datos1.xlsx", sheet_name ="warehouse")
@@ -49,7 +43,7 @@ def create_model():
     model.sWarehouses = Set()
     model.sCommodities = Set()
     # Derived sets
-    model.sTripDurationDomain = Set(dimen=3)
+    model.sTripDuration = Set(dimen=3)
 
     # TO-DO: esto será la definición del conjunto
     # sTripDurationDomain = [(v, s, s2) for v in sVehicles for s in sStops for s2 in sStops
@@ -58,22 +52,17 @@ def create_model():
 
 
     # Parameters
-    model.pVehCAP = Param(hoja_param.cell_value(1, 1), mutable=True) # valor = 22 pallets
-    model.pFleetSize = Param(hoja_param.cell_value(2, 1), mutable=True) # valor= 8 vehicles
-    model.pLoadTime = Param(hoja_param.cell_value(3, 1), mutable=True) # valor= 1 min
-    model.pUnloadTime = Param(hoja_param.cell_value(4, 1), mutable=True) # valor = 0.5 min
-    model.pReqTimeLimit = Param(hoja_param.cell_value(5, 1), mutable=True) # valor = 8 hours = 480 min
-    model.pOptTimeLimit = Param(hoja_param.cell_value(6, 1), mutable=True) # valor = 10 hours = 600 min
-    model.pBigM1 = Param(hoja_param.cell_value(7, 1), mutable=True) # valor = max TripDuration = 35 min
-    model.pBigM2 = Param(hoja_param.cell_value(8, 1), mutable=True) # valor = OptTimeLimit = 600 min
-    model.pBigM3 = Param(hoja_param.cell_value(9, 1), mutable=True) # valor = OptTimeLimit-ReqTimeLimit = 120 min
+    model.pVehCAP = Param(mutable=True) # valor = 22 pallets
+    model.pFleetSize = Param(mutable=True) # valor= 8 vehicles
+    model.pLoadTime = Param(mutable=True) # valor= 1 min
+    model.pUnloadTime = Param(mutable=True) # valor = 0.5 min
+    model.pReqTimeLimit = Param(mutable=True) # valor = 8 hours = 480 min
+    model.pOptTimeLimit = Param(mutable=True) # valor = 10 hours = 600 min
+    model.pBigM1 = Param(mutable=True) # valor = max TripDuration = 35 min
+    model.pBigM2 = Param(mutable=True) # valor = OptTimeLimit = 600 min
+    model.pBigM3 = Param(mutable=True) # valor = OptTimeLimit-ReqTimeLimit = 120 min
 
-    listaTrip = []
-    model.pTripDuration = Param(listaTrip,mutable=True)
-    for i in range(): #hasta que el excel detecte la casilla vacía
-        listaTrip.append([])
-        for j in range(3):
-            listaTrip[i].append(hoja_trip_duration.cell_value(i,j))  #leer string
+    model.pTripDuration = Param(mutable=True)
 
 
     # Binary Variables
@@ -92,23 +81,59 @@ def create_model():
     model.vQuantity = Var(model.sVehicles, model.sStops, model.sCommodities, domain=NonNegativeReals)
     model.vLoadQuantity = Var(model.sVehicles, model.sStops, model.sCommodities, domain=NonNegativeReals)
     model.vUnloadQuantity = Var(model.sVehicles, model.sStops, model.sCommodities, domain=NonNegativeReals)
-    model.vTripDuration = Var(model.sTripDurationDomain, domain=NonNegativeReals)
+    model.vTripDuration = Var(model.sTripDuration, domain=NonNegativeReals)
 
     # Constraints
-    def fcMaxVehCAP(model, v, s):
+    def fc1(model, v, s, c):
+        if model.sStops!=0
+            return model.vQuantity[v, s2, c]= model.vQuantity[v, s, c]-model.vUnloadQuantity[v,s,c]+model.vLoadQuantity[v, s, c] \
+            s2 for s+1
+    def fc2MaxVehCAP(model, v, s)
         return sum(model.vQuantity[v, s, c] for c in model.sCommodities) <= model.pCapacity
+    def fc3LodingReqCommodities(model, commodity):
+        if model.sCommodities[3]==1
+            return sum(model.vLoadQuantity[vehicle, stop, commodity] for vehicle in model.sVehicles \
+            for stop in model.sStops) = model.sCommodities[2]
+    def fc4UnlodingReqCommodities(model, commodity):
+        if model.sCommodities[3] == 1
+            return sum(model.vUnloadQuantity[vehicle, stop, commodity] for vehicle in model.sVehicles \
+            for stop in model.sStops) = model.sCommodities[2]
+    def fc5(model,v,s,c)
+        if model.sCommodities[1]==model.sWarehouse
+            return model.vUnloadQuantity[v,s,c]<=model.sCommodities[2]*model.vAlpha[v,s,w] \
+            for w in model.sWarehouses
+    def fc6(model, v, s, c)
+        if model.sCommodities[1] == model.sWarehouse
+            return model.vLoadQuantity[v, s, c] <= model.sCommodities[2] * model.vAlpha[v, s, w] \
+            for w in model.sWarehouses
+    def fc7(model, v, s, w, w2)
+        if w!=w2
+            return model.vTripDuration[v, s, s2] >= model.pTripDuration[w,w2] \
+            - model.pBigM1 *(2-model.vAlpha[v,s,w]-model.vAlpha[v,s2,w2])
+            for s2 in model.sStops if sStops.index_set(s2) = sStops.index_set(s) + 1
 
-    def fcLodingReqCommodities(model, commodity):
-        return sum(model.vLoadQuantity(vehicle, stop, commodity) for vehicle in model.sVehicles for stop in model.sStops) = \
-            commodity[2]
-    def fcUnlodingReqCommodities(model, commodity):
-        return sum(model.vUnloadQuantity(vehicle, stop, commodity) for vehicle in model.sVehicles for stop in model.sStops) = \
-            commodity[2]
+
+
     # Activate constraints
+    model.c1 = Constraint(model.sVehicles, model.sStops, model.sCommodities, rule=fc1)
+    model.c2MaxVehCAP = Constraint(model.sVehicles, model.sStops, rule=fc2MaxVehCAP)
+    model.c3LoadingReq = Constraint(model.sCommodities, rule=fc3LodingReqCommodities)
+    model.c4UnloadingReq = Constraint(model.sCommodities, rule=fc4UnlodingReqCommodities)
+    model.c5 = Constraint(model.sVehicles, model.sStops,model.sWarehouses, rule=fc5)
+    model.c6 = Constraint(model.sVehicles, model.sStops,model.sWarehouses, rule=fc6)
+    model.c7 = Constraint(model.sVehicles, model.sStops,model.sWarehouses,model.sWarehouses, rule=fc7)
+    model.c8 = Constraint(model.sVehicles, model.sStops, rule=fc8)
+    model.c9 = Constraint(model.sVehicles, model.sStops, rule=fc9)
+    model.c10 = Constraint(model.sVehicles, model.sStops, rule=fc10)
+    model.c11 = Constraint(model.sVehicles, model.sStops, rule=fc11)
+    model.c12 = Constraint(model.sVehicles, model.sStops, rule=fc12)
+    model.c13 = Constraint(model.sVehicles, model.sStops,model.sVehicles, model.sStops, rule=fc13)
+    model.c14 = Constraint(model.sVehicles, model.sStops,model.sVehicles, model.sStops, rule=fc14)
+    model.c15 = Constraint(model.sVehicles, model.sStops, rule=fc15)
+    model.c16 = Constraint(model.sVehicles, model.sStops,model.sCommodities, rule=fc16)
+    model.c17 = Constraint(model.sVehicles, model.sStops, rule=fc17)
 
-    model.cMaxVehCAP = Constraint(model.sVehicles, model.sStops, rule=fcMaxVehCAP)
-    model.cLoadingReq = Constraint(model.sCommodities[3], rule=fcLodingReqCommodities) #model.sCommodities[3]=1
-    model.cLoadingReq = Constraint(model.sCommodities[3], rule=fcUnlodingReqCommodities) #model.sCommodities[3]=1
+
     return model
 
 # fmt: on

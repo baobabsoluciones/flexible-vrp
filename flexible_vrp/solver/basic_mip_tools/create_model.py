@@ -52,17 +52,17 @@ def create_model():
 
 
     # Parameters
-    model.pVehCAP = Param(mutable=True) # valor = 22 pallets
-    model.pFleetSize = Param(mutable=True) # valor= 8 vehicles
-    model.pLoadTime = Param(mutable=True) # valor= 1 min
-    model.pUnloadTime = Param(mutable=True) # valor = 0.5 min
-    model.pReqTimeLimit = Param(mutable=True) # valor = 8 hours = 480 min
-    model.pOptTimeLimit = Param(mutable=True) # valor = 10 hours = 600 min
-    model.pBigM1 = Param(mutable=True) # valor = max TripDuration = 35 min
-    model.pBigM2 = Param(mutable=True) # valor = OptTimeLimit = 600 min
-    model.pBigM3 = Param(mutable=True) # valor = OptTimeLimit-ReqTimeLimit = 120 min
+    model.pVehCAP = Param(default=0,mutable=True) # valor = 22 pallets
+    model.pFleetSize = Param(default=0,mutable=True) # valor= 8 vehicles
+    model.pLoadTime = Param(default=0,mutable=True) # valor= 1 min
+    model.pUnloadTime = Param(default=0,mutable=True) # valor = 0.5 min
+    model.pReqTimeLimit = Param(default=0,mutable=True) # valor = 8 hours = 480 min
+    model.pOptTimeLimit = Param(default=0,mutable=True) # valor = 10 hours = 600 min
+    model.pBigM1 = Param(default=0,mutable=True) # valor = max TripDuration = 35 min
+    model.pBigM2 = Param(default=0,mutable=True) # valor = OptTimeLimit = 600 min
+    model.pBigM3 = Param(default=0,mutable=True) # valor = OptTimeLimit-ReqTimeLimit = 120 min
 
-    model.pTripDuration = Param(mutable=True)
+    model.pTripDuration = Param(, mutable=True) #esto es una lista/tabla
 
 
     # Binary Variables
@@ -84,41 +84,57 @@ def create_model():
     model.vTripDuration = Var(model.sTripDuration, domain=NonNegativeReals)
 
     # Constraints
-    def fc1(model, v, s, c):
-        if model.sStops!=0
-            return model.vQuantity[v, s2, c]= model.vQuantity[v, s, c]-model.vUnloadQuantity[v,s,c]+model.vLoadQuantity[v, s, c] \
-            s2 for s+1
-    def fc2MaxVehCAP(model, v, s)
+    def fc1(model, v, s):
+        s2 = s + 1
+        return sum(model.vQuantity[v, s2, c] for c in model.sCommodities) = sum(model.vQuantity[v, s, c] for c in model.sCommodities) \
+        - sum(model.vUnloadQuantity[v, s, c] for c in model.sCommodities) + sum(model.vLoadQuantity[v, s, c] for  c in model.sCommodities)
+    def fc2(model, v, s)
         return sum(model.vQuantity[v, s, c] for c in model.sCommodities) <= model.pCapacity
-    def fc3LodingReqCommodities(model, commodity):
+    def fc3(model, c):
         if model.sCommodities[3]==1
-            return sum(model.vLoadQuantity[vehicle, stop, commodity] for vehicle in model.sVehicles \
-            for stop in model.sStops) = model.sCommodities[2]
-    def fc4UnlodingReqCommodities(model, commodity):
+            return sum(model.vLoadQuantity[v, s, c] for v in model.sVehicles \
+            for s in model.sStops) = model.sCommodities[2]
+    def fc4(model, c):
         if model.sCommodities[3] == 1
-            return sum(model.vUnloadQuantity[vehicle, stop, commodity] for vehicle in model.sVehicles \
-            for stop in model.sStops) = model.sCommodities[2]
-    def fc5(model,v,s,c)
-        if model.sCommodities[1]==model.sWarehouse
-            return model.vUnloadQuantity[v,s,c]<=model.sCommodities[2]*model.vAlpha[v,s,w] \
-            for w in model.sWarehouses
-    def fc6(model, v, s, c)
-        if model.sCommodities[1] == model.sWarehouse
-            return model.vLoadQuantity[v, s, c] <= model.sCommodities[2] * model.vAlpha[v, s, w] \
-            for w in model.sWarehouses
+            return sum(model.vUnloadQuantity[v, s, c] for v in model.sVehicles \
+            for s in model.sStops) = model.sCommodities[2]
+    def fc5(model,v,s,w)
+        if model.sCommodities[1]==model.sWarehouses
+            return sum(model.vUnloadQuantity[v,s,c] for c in model.sCommodities) <= \
+            model.sCommodities[2] * model.vAlpha[v,s,w]
+
+    def fc6(model, v, s, w)
+        if model.sCommodities[1] == model.sWarehouses
+            return sum(model.vLoadQuantity[v, s, c] for c in model.sCommodities) <= \
+            model.sCommodities[2] * model.vAlpha[v, s, w]  #model.sCommodities[2]
+
     def fc7(model, v, s, w, w2)
         if w!=w2
+            s2 = s + 1
             return model.vTripDuration[v, s, s2] >= model.pTripDuration[w,w2] \
-            - model.pBigM1 *(2-model.vAlpha[v,s,w]-model.vAlpha[v,s2,w2])
-            for s2 in model.sStops if sStops.index_set(s2) = sStops.index_set(s) + 1
+            - model.pBigM1 * (2-model.vAlpha[v,s,w]-model.vAlpha[v,s2,w2])
 
+    def fc8(model, v, s)
+        return model.vUnloadDuration[v, s] = sum(model.vUnloadQuantity[v,s,c] for c in model.sCommodities) \
+        * model.pUnloadTime
 
+    def fc9(model, v, s)
+        return model.vLoadDuration[v, s] = sum(model.vLoadQuantity[v,s,c] for c in model.sCommodities) \
+        * model.pLoadTime
+    def fc10(model, v, s)
+        return model.vDepartureTime[v, s] = model.vArrivalTime[v, s] + model.vLoadDuration[v, s] + model.vUnloadDuration[v, s]
+    def fc11(model, v, s)
+        s2=s+1
+        return model.vArrivalTime[v, s2] = model.vDepartureTime[v, s] + model.vTripDuration[v, s, s2]
+    def fc12(model, v, s)
+        return model.vUnloadTime[v, s] = model.vArrivalTime[v, s] + model.vUnloadDuration[v, s]
+    def fc17(model,v,s)
 
     # Activate constraints
-    model.c1 = Constraint(model.sVehicles, model.sStops, model.sCommodities, rule=fc1)
-    model.c2MaxVehCAP = Constraint(model.sVehicles, model.sStops, rule=fc2MaxVehCAP)
-    model.c3LoadingReq = Constraint(model.sCommodities, rule=fc3LodingReqCommodities)
-    model.c4UnloadingReq = Constraint(model.sCommodities, rule=fc4UnlodingReqCommodities)
+    model.c1 = Constraint(model.sVehicles, model.sStops, rule=fc1)
+    model.c2 = Constraint(model.sVehicles, model.sStops, rule=fc2)
+    model.c3 = Constraint(model.sCommodities, rule=fc3)
+    model.c4 = Constraint(model.sCommodities, rule=fc4)
     model.c5 = Constraint(model.sVehicles, model.sStops,model.sWarehouses, rule=fc5)
     model.c6 = Constraint(model.sVehicles, model.sStops,model.sWarehouses, rule=fc6)
     model.c7 = Constraint(model.sVehicles, model.sStops,model.sWarehouses,model.sWarehouses, rule=fc7)

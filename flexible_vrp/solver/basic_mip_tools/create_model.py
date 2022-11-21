@@ -72,7 +72,6 @@ def create_model():
             listaTrip[i].append(hoja_trip_duration.cell_value(i,j))  #leer string
 
 
-
     # Binary Variables
     model.vAlpha = Var(model.sVehicles, model.sStops, model.sWarehouses, domain=Binary)
     model.vBeta1 = Var(model.sVehicles, model.sStops, model.sVehicles, model.sStops, domain=Binary)

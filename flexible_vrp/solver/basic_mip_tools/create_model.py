@@ -21,7 +21,7 @@ def create_model():
     # Create model
     model = AbstractModel()
 
-    # TODO: mover esto a lectura de datos
+    # TO-DO: mover esto a lectura de datos
     # # Sets
     # listaVeh=[]
     # model.sVehicles = Set(listaVeh)
@@ -43,7 +43,11 @@ def create_model():
     #     for j in range(3):
     #         listaCom[i].append(hoja_inst1.cell_value(i,j)) #str
 
-
+    # Sets
+    model.sVehicles = Set()
+    model.sStops = Set()
+    model.sWarehouses = Set()
+    model.sCommodities = Set()
     # Derived sets
     model.sTripDurationDomain = Set(dimen=3)
 
@@ -65,7 +69,7 @@ def create_model():
     model.pBigM3 = Param(hoja_param.cell_value(9, 1), mutable=True) # valor = OptTimeLimit-ReqTimeLimit = 120 min
 
     listaTrip = []
-    model.pTripDuration = Param(listaTrip)
+    model.pTripDuration = Param(listaTrip,mutable=True)
     for i in range(): #hasta que el excel detecte la casilla vacía
         listaTrip.append([])
         for j in range(3):
@@ -94,14 +98,17 @@ def create_model():
     def fcMaxVehCAP(model, v, s):
         return sum(model.vQuantity[v, s, c] for c in model.sCommodities) <= model.pCapacity
 
-    #def fcLodingCompulsoryCommodities(model, commodity):
-    #    sum(model.vLoadQuantity(truck, stop, commodity) for truck in model.sTrucks for stop in model.sStops) = commodity[2]
-
+    def fcLodingReqCommodities(model, commodity):
+        return sum(model.vLoadQuantity(vehicle, stop, commodity) for vehicle in model.sVehicles for stop in model.sStops) = \
+            commodity[2]
+    def fcUnlodingReqCommodities(model, commodity):
+        return sum(model.vUnloadQuantity(vehicle, stop, commodity) for vehicle in model.sVehicles for stop in model.sStops) = \
+            commodity[2]
     # Activate constraints
-    # activar la restriccion2 model.Constraint(model.sCommoditiesCompusory, rule= fcLodingCompulsoryCommodities)
 
     model.cMaxVehCAP = Constraint(model.sVehicles, model.sStops, rule=fcMaxVehCAP)
-
+    model.cLoadingReq = Constraint(model.sCommodities[3], rule=fcLodingReqCommodities) #model.sCommodities[3]=1
+    model.cLoadingReq = Constraint(model.sCommodities[3], rule=fcUnlodingReqCommodities) #model.sCommodities[3]=1
     return model
 
 # fmt: on

@@ -88,47 +88,60 @@ def create_model():
         s2 = s + 1
         return sum(model.vQuantity[v, s2, c] for c in model.sCommodities) = sum(model.vQuantity[v, s, c] for c in model.sCommodities) \
         - sum(model.vUnloadQuantity[v, s, c] for c in model.sCommodities) + sum(model.vLoadQuantity[v, s, c] for  c in model.sCommodities)
-    def fc2(model, v, s)
+    def fc2(model, v, s):
         return sum(model.vQuantity[v, s, c] for c in model.sCommodities) <= model.pCapacity
     def fc3(model, c):
-        if model.sCommodities[3]==1
+        if model.sCommodities[3]==1:
             return sum(model.vLoadQuantity[v, s, c] for v in model.sVehicles \
             for s in model.sStops) = model.sCommodities[2]
     def fc4(model, c):
-        if model.sCommodities[3] == 1
+        if model.sCommodities[3] == 1:
             return sum(model.vUnloadQuantity[v, s, c] for v in model.sVehicles \
             for s in model.sStops) = model.sCommodities[2]
-    def fc5(model,v,s,w)
-        if model.sCommodities[1]==model.sWarehouses
+    def fc5(model,v,s,w):
+        if model.sCommodities[1]==model.sWarehouses:
             return sum(model.vUnloadQuantity[v,s,c] for c in model.sCommodities) <= \
             model.sCommodities[2] * model.vAlpha[v,s,w]
 
-    def fc6(model, v, s, w)
-        if model.sCommodities[1] == model.sWarehouses
+    def fc6(model, v, s, w):
+        if model.sCommodities[1] == model.sWarehouses:
             return sum(model.vLoadQuantity[v, s, c] for c in model.sCommodities) <= \
             model.sCommodities[2] * model.vAlpha[v, s, w]  #model.sCommodities[2]
 
-    def fc7(model, v, s, w, w2)
-        if w!=w2
+    def fc7(model, v, s, w, w2):
+        if w!=w2:
             s2 = s + 1
             return model.vTripDuration[v, s, s2] >= model.pTripDuration[w,w2] \
             - model.pBigM1 * (2-model.vAlpha[v,s,w]-model.vAlpha[v,s2,w2])
 
-    def fc8(model, v, s)
+    def fc8(model, v, s):
         return model.vUnloadDuration[v, s] = sum(model.vUnloadQuantity[v,s,c] for c in model.sCommodities) \
         * model.pUnloadTime
 
-    def fc9(model, v, s)
+    def fc9(model, v, s):
         return model.vLoadDuration[v, s] = sum(model.vLoadQuantity[v,s,c] for c in model.sCommodities) \
         * model.pLoadTime
-    def fc10(model, v, s)
+    def fc10(model, v, s):
         return model.vDepartureTime[v, s] = model.vArrivalTime[v, s] + model.vLoadDuration[v, s] + model.vUnloadDuration[v, s]
-    def fc11(model, v, s)
+    def fc11(model, v, s):
         s2=s+1
         return model.vArrivalTime[v, s2] = model.vDepartureTime[v, s] + model.vTripDuration[v, s, s2]
-    def fc12(model, v, s)
+    def fc12(model, v, s):
         return model.vUnloadTime[v, s] = model.vArrivalTime[v, s] + model.vUnloadDuration[v, s]
-    def fc17(model,v,s)
+    def fc13(model,v,s,v2,s2):
+        if v!=v2:
+            return model.vBeta1[v,s,v2,s2] + model.vBeta2[v2,s2,v,s] >= model.vAlpha[v,s,w] + model.vAlpha[v2,s2,w] -1
+    def fc14(model,v,s,v2,s2):
+        if v!= v2:
+            return model.vArrivalTime[v, s]>= model.vDepartureTime[v,s]- (1-model.vBeta1[v,s,v2,s2]) * model.pBigM2
+    def fc15(model,v,s):
+        return model.vUnloadTime[v,s] <= model.pReqTimeLimit + model.vGamma[v,s] * model.pBigM3
+    def fc16(model,v,s,c):
+        if model.sCommodities[3]==1:
+            return model.vLoadQuantity[v,s,c] <= (1-model.vGamma[v,s]) * model.pVehCAP
+    def fc17(model,v,s):
+        return model.vUnloadTime[v,s] <= model.pOptTimeLimit
+
 
     # Activate constraints
     model.c1 = Constraint(model.sVehicles, model.sStops, rule=fc1)

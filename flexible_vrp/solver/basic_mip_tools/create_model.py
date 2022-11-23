@@ -113,7 +113,7 @@ def create_model():
             s2 = s + 1
             return model.vTripDuration[v, s, s2] >= model.pTripDuration[w,w2] \
             - model.pBigM1 * (2-model.vAlpha[v,s,w]-model.vAlpha[v,s2,w2])
-#hola
+
     def fc8(model, v, s):
         return model.vUnloadDuration[v, s] = sum(model.vUnloadQuantity[v,s,c] for c in model.sCommodities) \
         * model.pUnloadTime

@@ -4,9 +4,7 @@
 #df.to_records() convierte DataFrame en una matriz de registros NumPy.
 
 import pandas as pd
-from .data import files
-
-uploaded = files.upload()
+datos = 'https://github.com/baobabsoluciones/flexible-vrp/blob/feature/base_mip/data/datos2.xlsx'
 
 sheet_param = pd.read_excel("datos1.xlsx", sheet_name ="parameters")
 sheet_warehouse = pd.read_excel("datos1.xlsx", sheet_name ="warehouse")

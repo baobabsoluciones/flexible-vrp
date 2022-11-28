@@ -4,38 +4,9 @@ from pyomo.environ import *
 # black won't reformat this file.
 # fmt: off
 
-# LECTURA DATOS
-
-hoja_param = pd.read_excel("datos1.xlsx", sheet_name ="parameters")
-hoja_warehouse = pd.read_excel("datos1.xlsx", sheet_name ="warehouse")
-hoja_trip_duration = pd.read_excel("datos1.xlsx", sheet_name ="trip_duration")
-hoja_inst1 = pd.read_excel("datos1.xlsx", sheet_name ="comp_quantity_inst1")
-
 def create_model():
     # Create model
     model = AbstractModel()
-
-    # TO-DO: mover esto a lectura de datos
-    # # Sets
-    # listaVeh=[]
-    # model.sVehicles = Set(listaVeh)
-    # for i in range(hoja_param.cell_value(2, 1)):
-    #     listaVeh.append(i+1)
-    #
-    # listaStops=[]
-    # model.sStops = Set(listaStops)
-    #
-    # listaW = []
-    # model.sWarehouses = Set(listaW)
-    # for i in range(): #hasta que el excel detecte la casilla vacía
-    #     listaW.append(hoja_warehouse.cell_value(i,0)) #como decirle que es str
-    #
-    # listaCom = []
-    # model.sCommodities = Set(listaCom)
-    # for i in range(): #hasta que el excel detecte la casilla vacía
-    #     listaCom.append([])
-    #     for j in range(3):
-    #         listaCom[i].append(hoja_inst1.cell_value(i,j)) #str
 
     # Sets
     model.sVehicles = Set()

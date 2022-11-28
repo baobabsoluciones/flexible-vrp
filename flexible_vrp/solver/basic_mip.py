@@ -56,7 +56,6 @@ class BasicMip(Experiment):
 
         return dict(status=STATUS_TIME_LIMIT, status_sol=SOLUTION_STATUS_FEASIBLE)
         """
-
         """
         # Sets
         listaVeh = []

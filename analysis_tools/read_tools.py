@@ -1,10 +1,10 @@
-# Tools for reading and wrting the solution from Excel
+# Tools for reading and writing the solution from Excel
 # df.to_records()
 
 #df.to_records() convierte DataFrame en una matriz de registros NumPy.
 
 import pandas as pd
-datos = 'https://github.com/baobabsoluciones/flexible-vrp/blob/feature/base_mip/data/datos2.xlsx'
+datos = '.\data\datos2.xlsx'
 
 sheet_param = pd.read_excel(datos, sheet_name ="parameters")
 sheet_warehouse = pd.read_excel(datos, sheet_name ="warehouse")

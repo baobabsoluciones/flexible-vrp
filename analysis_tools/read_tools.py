@@ -4,7 +4,7 @@
 #df.to_records() convierte DataFrame en una matriz de registros NumPy.
 
 import pandas as pd
-datos = '.\data\datos2.xlsx'
+datos = '..\data\datos2.xlsx'
 
 sheet_param = pd.read_excel(datos, sheet_name ="parameters")
 sheet_warehouse = pd.read_excel(datos, sheet_name ="warehouse")

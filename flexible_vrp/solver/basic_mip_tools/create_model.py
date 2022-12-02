@@ -15,6 +15,7 @@ def create_model():
     model.sCommodities = Set()
     # Derived sets
     model.sTripDuration = Set(dimen=3)
+    model.c7_constraint_domain = Set(dime=5)
 
     # TO-DO: esto será la definición del conjunto
     # sTripDurationDomain = [(v, s, s2) for v in sVehicles for s in sStops for s2 in sStops
@@ -33,7 +34,7 @@ def create_model():
     model.pBigM2 = Param(default=0,mutable=True) # valor = OptTimeLimit = 600 min
     model.pBigM3 = Param(default=0,mutable=True) # valor = OptTimeLimit-ReqTimeLimit = 120 min
 
-    model.pTripDuration = Param(, mutable=True) #esto es una lista/tabla
+    model.pTripDuration = Param(mutable=True) #esto es una lista/tabla
 
 
     # Binary Variables
@@ -121,7 +122,15 @@ def create_model():
     model.c4 = Constraint(model.sCommodities, rule=fc4)
     model.c5 = Constraint(model.sVehicles, model.sStops,model.sWarehouses, rule=fc5)
     model.c6 = Constraint(model.sVehicles, model.sStops,model.sWarehouses, rule=fc6)
-    model.c7 = Constraint(model.sVehicles, model.sStops,model.sWarehouses,model.sWarehouses, rule=fc7)
+
+    # c7_domain = [(v, s, s2, w, w2) for v in model.sVehicles,
+    #              for s in model.sStops,
+    #              for s2 in model.sStops,
+    #              for w in model.sWarehouses,
+    #              for w2 in model.sWarehouses,
+    #              if w != w2 and list(model.sStops).index(s2) == list(model.sStops).index(s) + 1]
+
+    model.c7 = Constraint(model.c7_constraint_domain, rule=fc7)
     model.c8 = Constraint(model.sVehicles, model.sStops, rule=fc8)
     model.c9 = Constraint(model.sVehicles, model.sStops, rule=fc9)
     model.c10 = Constraint(model.sVehicles, model.sStops, rule=fc10)

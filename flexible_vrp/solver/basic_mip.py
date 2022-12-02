@@ -24,7 +24,9 @@ class BasicMip(Experiment):
         
         # Prepare data
         data = self.prepare_model_data(model)
-        # data= {None: {"set1":{None:[1,2,3]}, "param1":{None:1}, "param2": {(1,1):3, (1,2):3}}}
+        vehicles = ["v{}".format(n) for n in range(1,NUM+1)]
+        durations
+        # data= {None: {"sVehicles":{None:vehicles}, "param1":{None:1}, pTripDutation": {(1,1):3, (1,2):3}}}
         model_instance = model.create_instance(data, report_timing=False)
         logfile = "./data/logfile.log"
         # Solve
@@ -58,6 +60,9 @@ class BasicMip(Experiment):
         """
         """
         # Sets
+       """
+        #["v{}".format(n) for n in range(1,NUM+1)]
+        """
         listaVeh = []
         Vehicles = listaVeh
         for i in range(sheet_param.cell_value(2, 1)):

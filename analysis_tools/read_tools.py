@@ -28,7 +28,7 @@ dict_conjunto={
     'dict_trip_duration':dict_trip_duration,
     'dict_inst1':dict_inst1
 }
-#print(df_param)
+print(df_param)
 #print(df_warehouse)
 #print(df_inst1)
 #print(df_trip_duration)
@@ -46,3 +46,10 @@ data = {
     "parameters":{"p1":1}
  }
 
+df_conjunto = {
+    "parameters":df_param,
+    "warehouses":df_warehouse,
+    "trip_duration": df_trip_duration,
+    "inst_1": df_inst1,
+}
+print(df_conjunto)

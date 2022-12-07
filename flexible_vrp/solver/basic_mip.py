@@ -25,10 +25,29 @@ class BasicMip(Experiment):
         # Prepare data
         data = self.prepare_model_data(model)
         vehicles = ["v{}".format(n) for n in range(1,fleet_size+1)]
-        stop
+        stops
         warehouse =["w{}".format(n)
         durations
-        # data= {None: {"sVehicles":{None:vehicles}, "param1":{None:1}, "pTripDutation": {(1,1):3, (1,2):3}}}
+        # data= {None: {
+            "sVehicles":{None:vehicles}, 
+            "sStops":{None:}, 
+            "sWarehouses": {None:},
+            "sCommodities": {None:},
+            
+            "sTripDuration" :{None:},
+            
+            "pVehCAP":{None:},
+            "pFleetSize":{None:},
+            "pLoadTime":{None:},
+            "pUnloadTime":{None:},
+            "pReqTimeLimit":{None:},
+            "pOptTimeLimit":{None:},
+            "pBigM1":{None:},
+            "pBigM2":{None:},
+            "pBigM3":{None:},
+            "pTripDuration":{None:},
+            
+        }}
         model_instance = model.create_instance(data, report_timing=False)
         logfile = "./data/logfile.log"
         # Solve

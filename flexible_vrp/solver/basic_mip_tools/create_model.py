@@ -48,7 +48,7 @@ def create_model():
     model.vArrivalTime = Var(model.sVehicles, model.sStops, domain=NonNegativeReals)
     model.vDepartureTime = Var(model.sVehicles, model.sStops, domain=NonNegativeReals)
     model.vUnloadTime = Var(model.sVehicles, model.sStops, domain=NonNegativeReals)
-    model.vLoadDuration = Var(model.sVehicles, model.sStos, domain=NonNegativeReals)
+    model.vLoadDuration = Var(model.sVehicles, model.sStops, domain=NonNegativeReals)
     model.vUnloadDuration = Var(model.sVehicles, model.sStops, domain=NonNegativeReals)
     model.vQuantity = Var(model.sVehicles, model.sStops, model.sCommodities, domain=NonNegativeReals)
     model.vLoadQuantity = Var(model.sVehicles, model.sStops, model.sCommodities, domain=NonNegativeReals)

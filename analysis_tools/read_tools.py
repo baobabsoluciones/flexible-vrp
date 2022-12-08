@@ -4,52 +4,51 @@
 #df.to_records() convierte DataFrame en una matriz de registros NumPy.
 import json
 import pandas as pd
-datos = '..\data\datos2.xlsx'
 
-sheet_param = pd.read_excel(datos, sheet_name ="parameters")
-sheet_warehouse = pd.read_excel(datos, sheet_name ="warehouse")
-sheet_trip_duration = pd.read_excel(datos, sheet_name ="trip_duration")
-sheet_inst1 = pd.read_excel(datos, sheet_name ="comp_quantity_inst1")
+def read_input_data(file_path):
 
-#to_records: Crea una matriz con el índice, el nombre del parámetro y el valor
-df_param = sheet_param.to_records()
-df_warehouse = sheet_warehouse.to_records()
-df_trip_duration = sheet_trip_duration.to_records()
-df_inst1 = sheet_inst1.to_records()
+    df_parameters = pd.read_excel(file_path, sheet_name ="parameters")
+    df_warehouses = pd.read_excel(file_path, sheet_name ="warehouse")
+    df_trip_durations = pd.read_excel(file_path, sheet_name ="trip_duration")
+    df_commodities = pd.read_excel(file_path, sheet_name ="comp_quantity_inst1")
 
-dict_param = sheet_param.set_index('name')['value'].to_dict()
-dict_warehouse = sheet_warehouse.to_dict()
-dict_trip_duration = sheet_trip_duration.to_dict()
-dict_inst1 = sheet_inst1.to_dict()
+    #to_records: Crea una matriz con el índice, el nombre del parámetro y el valor
+    df_parameters.columns = ['param_name', 'param_value']
+    parameters = df_parameters.to_dict('records')
+    warehouses = df_warehouses.to_dict('records')
+    json_trip_durations = df_trip_durations.to_dict('records')
+    json_commodities = df_commodities.to_dict('records')
 
-dict_conjunto={
-    'dict_param': dict_param,
-    'dict_warehouse': dict_warehouse,
-    'dict_trip_duration':dict_trip_duration,
-    'dict_inst1':dict_inst1
-}
-print(df_param)
-#print(df_warehouse)
-#print(df_inst1)
-#print(df_trip_duration)
-#print(dict_param)
-#print(" \n")
-#print(df_param)
-#print(dict_warehouse)
-#print(dict_trip_duration)
-#print(dict_inst1)
-#print(dict_conjunto)
 
-data = {
-    "table1":[{"col1":1, "col2":3}, {"col1":2, "col2":3}, {"col1":3, "col2":3}],
-    "table2":[{"col1":1, "col2":3}, {"col1":2, "col2":3}, {"col1":3, "col2":3}],
-    "parameters":{"p1":1}
- }
+    json_parameters = {c['param_name']: c['param_value'] for c in parameters}
 
-df_conjunto = {
-    "parameters":df_param,
-    "warehouses":df_warehouse,
-    "trip_duration": df_trip_duration,
-    "inst_1": df_inst1,
-}
-print(df_conjunto)
+    dct_input_data={
+        'parameters': json_parameters,
+        # 'warehouses': warehouses,
+        'trip_durations': json_trip_durations,
+        'commodities': json_commodities
+    }
+    print(dct_input_data)
+    #print(df_warehouse)
+    #print(commodities)
+    #print(trip_durations)
+    #print(dict_param)
+    #print(" \n")
+    #print(param)
+    #print(dict_warehouse)
+    #print(dict_trip_duration)
+    #print(dict_inst1)
+    #print(dict_conjunto)
+
+    # data = {
+    #     "table1":[{"col1":1, "col2":3}, {"col1":2, "col2":3}, {"col1":3, "col2":3}],
+    #     "table2":[{"col1":1, "col2":3}, {"col1":2, "col2":3}, {"col1":3, "col2":3}],
+    #     "parameters":{"p1":1}
+    #  }
+    #
+    return dct_input_data
+
+# if __name__ == "__main__":
+#     file_path = '..\data\datos2.xlsx'
+#     input_data = read_input_data(file_path)
+#     print(input_data)

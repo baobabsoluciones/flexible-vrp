@@ -3,15 +3,51 @@
 from ..core import Experiment, Solution
 from .basic_mip_tools.create_model import create_model
 from pyomo.environ import SolverFactory
-
+import pandas as pd
 
 class BasicMip(Experiment):
     def __init__(self, instance, solution=None):
         super().__init__(instance, solution)
 
+    def prepare_model_data(self):
+        # data is the dict that is filled in and returned
+        data = dict()
+
+
+        data = {None:{}}
+
+        # Adding the parameters
+        for p in self.instance.data['parameters'].keys():
+            data[None][p] = {None: self.instance.data['parameters'][p]}
+
+
+        # Adding the sWarehouses set.
+        # Retrieving orings and destination
+        origins = set([c['origin'] for c in self.instance.data['commodities']])
+        destinations = set([c['destination'] for c in self.instance.data['commodities']])
+        # Getting a list from the union of destinations and origins
+        warehouses = list(origins.union(destinations))
+        # Preparing tha dict {None: list_of_warehouses}
+        data_warehouses = {None: warehouses}
+        # Adding the info to the output dict
+        data[None]['sWarehouses'] = data_warehouses
+
+        # Adding the sCommodities set
+        data_commodities = {None: [(c['origin'], c['destination'], c['quantity'], c['required'])
+                                    for c in self.instance.data['commodities']]}
+        data[None]['sCommodities'] = data_commodities
+
+        # Adding the pCommodities parameter
+        data_trip_durations = {(x['location1'], x['location2']): x['time'] for x in self.instance.data['trip_durations']}
+        data['pTripDuration'] = data_trip_durations
+
+        return data
+
     def solve(self, options):
         if not self.instance.to_dict():
             raise ValueError("The instance is empty")
+
+        data = self.prepare_model_data()
 
         # Todo: replace this by the solve method
 

@@ -11,37 +11,44 @@ class BasicMip(Experiment):
 
     def prepare_model_data(self):
         # data is the dict that is filled in and returned
+        # Calculating MILP parameters and sets
+
+        # Estimating bigMs
+        # Todo: estimate values as a funcion of instance parameters
+        bigM1 = 100
+        bigM2 = 100
+        bigM3 = 100
+
+        # Generating the dictionary for Pyomo
         data = dict()
 
 
-        data = {None:{}}
+        data = dict()
 
         # Adding the parameters
-        for p in self.instance.data['parameters'].keys():
-            data[None][p] = {None: self.instance.data['parameters'][p]}
-
+        data['pVehCAP'] = {None: self.instance.data['parameters']['vehicle_capacity']}
+        # Todo: hacer lo mismo para el resto de parámetros
 
         # Adding the sWarehouses set.
         # Retrieving orings and destination
-        origins = set([c['origin'] for c in self.instance.data['commodities']])
-        destinations = set([c['destination'] for c in self.instance.data['commodities']])
+        origins = set([c['location1'] for c in self.instance.data['trip_durations']])
+        destinations = set([c['location2'] for c in self.instance.data['trip_durations']])
         # Getting a list from the union of destinations and origins
         warehouses = list(origins.union(destinations))
-        # Preparing tha dict {None: list_of_warehouses}
-        data_warehouses = {None: warehouses}
         # Adding the info to the output dict
-        data[None]['sWarehouses'] = data_warehouses
+        data['sWarehouses'] = {None: warehouses}
 
         # Adding the sCommodities set
-        data_commodities = {None: [(c['origin'], c['destination'], c['quantity'], c['required'])
+        data['sCommodities'] = {None: [(c['origin'], c['destination'], c['quantity'], c['required'])
                                     for c in self.instance.data['commodities']]}
-        data[None]['sCommodities'] = data_commodities
 
         # Adding the pCommodities parameter
-        data_trip_durations = {(x['location1'], x['location2']): x['time'] for x in self.instance.data['trip_durations']}
-        data['pTripDuration'] = data_trip_durations
+        data['pTripDuration'] = {(x['location1'], x['location2']): x['time'] for x in self.instance.data['trip_durations']}
 
-        return data
+        # Adding the set for Stops
+        data['sStops'] = {None: [s for s in range(self.instance.data['parameters']['no_stops'])]}
+
+        return {None: data}
 
     def solve(self, options):
         if not self.instance.to_dict():
@@ -50,40 +57,43 @@ class BasicMip(Experiment):
         data = self.prepare_model_data()
 
         # Todo: replace this by the solve method
+        model = create_model()
 
+        model_instance = model.create_instance(data, report_timing=False)
+
+        logfile = "./data/logfile.log"
+
+        # Solve
+        opt = self.set_solver(options)
+        result = opt.solve(
+            model_instance,
+            tee=True,
+            warmstart=False,
+            logfile=logfile,
+        )
+
+        self.status = self.get_status(result) # todo: create method
+        model_result = model_instance
+        obj = model_instance.f_obj()
+        print("Status: {} Objective value: {}".format(self.status, obj))
+        #
+        # # Prepare solution
+        # if self.is_feasible(self.status): #todo: create method
+        #     self.totals = self.get_total(model_result, result)
+        #     model_solution = self.get_model_solution(model_result)
+        #     self.solution = Solution(self.build_solution(model_solution))
+        # else:
+        #     self.solution = self.get_empty_solution()
+        #     self.variables_to_excel(model_result)
+
+        return 1 #dict(status=STATUS_TIME_LIMIT, status_sol=SOLUTION_STATUS_FEASIBLE)
 
 
         """
         Example of solve method:
         
-        model = create_model()
-        
-        # Prepare data
-        data = self.prepare_model_data(model)
-        vehicles = ["v{}".format(n) for n in range(1,fleet_size+1)]
-        stops
-        warehouse =["w{}".format(n)
-        durations
-        # data= {None: {
-            "sVehicles":{None:vehicles}, 
-            "sStops":{None:}, 
-            "sWarehouses": {None:},
-            "sCommodities": {None:},
-            
-            "sTripDuration" :{None:},
-            
-            "pVehCAP":{None:},
-            "pFleetSize":{None:},
-            "pLoadTime":{None:},
-            "pUnloadTime":{None:},
-            "pReqTimeLimit":{None:},
-            "pOptTimeLimit":{None:},
-            "pBigM1":{None:},
-            "pBigM2":{None:},
-            "pBigM3":{None:},
-            "pTripDuration":{None:},
-            
-        }}
+        model = create_model()        
+
         model_instance = model.create_instance(data, report_timing=False)
         logfile = "./data/logfile.log"
         # Solve
@@ -162,7 +172,7 @@ class BasicMip(Experiment):
         self.solution = Solution({"data": "This solver is not implemented yet"})
         return {}
 
-    def set_solver(options):
+    def set_solver(self, options):
         """
         Create the solver object and set the relevant options.
 
@@ -175,3 +185,4 @@ class BasicMip(Experiment):
             opt = SolverFactory("cbc")
         if "solver_config" in options:
             opt.options.update(options["solver_config"])
+        return opt

@@ -76,6 +76,8 @@ def create_model():
         if model.sCommodities[1]==model.sWarehouses:
             return sum(model.vUnloadQuantity[v,s,c] for c in model.sCommodities) <= \
             model.sCommodities[2] * model.vAlpha[v,s,w]
+        else:
+            return Constraint.skip
 
     def fc6_max_load(model, v, s, w):
         if model.sCommodities[1] == model.sWarehouses:
@@ -130,7 +132,7 @@ def create_model():
     #              for s2 in model.sStops,
     #              for w in model.sWarehouses,
     #              for w2 in model.sWarehouses,
-    #              if w != w2 and list(model.sStops).index(s2) == list(model.sStops).index(s) + 1]
+    #              if w != w2 and list(model.sStops).index(s2) < list(model.sStops).index(s)]
 
     model.c7_trip_duration = Constraint(model.c7_constraint_domain, rule=fc7_trip_duration)
     model.c8_unload_time = Constraint(model.sVehicles, model.sStops, rule=fc8_unload_time)

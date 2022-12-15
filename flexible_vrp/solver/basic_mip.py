@@ -12,18 +12,35 @@ class BasicMip(Experiment):
     def prepare_model_data(self):
         # data is the dict that is filled in and returned
         # Calculating MILP parameters and sets
-
+        """
         # Estimating bigMs
         # Todo: estimate values as a funcion of instance parameters
-        bigM1 = 35
-        bigM2 = 600
-        bigM3 = 120
-
+        bigM1 = max (data['pTripDuration'])
+        bigM2 = data['pOptTimeLimit']
+        bigM3 = (data['pOptTimeLimit'] - data['pReqTimeLimit'])
+        """
         # Generating the dictionary for Pyomo
-        data = dict()
-
 
         data = dict()
+
+        # Adding the set for Warehouses
+            # Retrieving orings and destination
+        origins = set([c['location1'] for c in self.instance.data['trip_durations']])
+        destinations = set([c['location2'] for c in self.instance.data['trip_durations']])
+            # Getting a list from the union of destinations and origins
+        warehouses = list(origins.union(destinations))
+            # Adding the info to the output dict
+        data['sWarehouses'] = {None: warehouses}
+
+        # Adding the set for Commodities
+        data['sCommodities'] = {None: [(c['origin'], c['destination'], c['quantity'], c['required'])
+                                    for c in self.instance.data['commodities']]}
+
+        # Adding the set for Stops
+        data['sStops'] = {None: [s for s in range(self.instance.data['parameters']['no_stops'])]}
+
+        # Adding the set for Vehicles
+        data['sVehicles'] = {None: [v for v in range(self.instance.data['parameters']['fleet_size'])]}
 
         # Adding the parameters
         data['pVehCAP'] = {None: self.instance.data['parameters']['vehicle_capacity']}
@@ -33,26 +50,15 @@ class BasicMip(Experiment):
         data['pReqTimeLimit'] = {None: self.instance.data['parameters']['req_time_limit']}
         data['pOptTimeLimit'] = {None: self.instance.data['parameters']['opt_time_limit']}
 
-        # Todo: hacer lo mismo para el resto de parámetros
-
-        # Adding the sWarehouses set.
-        # Retrieving orings and destination
-        origins = set([c['location1'] for c in self.instance.data['trip_durations']])
-        destinations = set([c['location2'] for c in self.instance.data['trip_durations']])
-        # Getting a list from the union of destinations and origins
-        warehouses = list(origins.union(destinations))
-        # Adding the info to the output dict
-        data['sWarehouses'] = {None: warehouses}
-
-        # Adding the sCommodities set
-        data['sCommodities'] = {None: [(c['origin'], c['destination'], c['quantity'], c['required'])
-                                    for c in self.instance.data['commodities']]}
-
         # Adding the pCommodities parameter
-        data['pTripDuration'] = {(x['location1'], x['location2']): x['time'] for x in self.instance.data['trip_durations']}
+        data['pTripDuration'] = {(x['location1'], x['location2']): x['time'] for x in
+                                 self.instance.data['trip_durations']}
 
-        # Adding the set for Stops
-        data['sStops'] = {None: [s for s in range(self.instance.data['parameters']['no_stops'])]}
+        # Adding the parameters BigM
+
+        data['bigM1'] = max (data['pTripDuration'])
+        data['bigM2'] = data['pOptTimeLimit']
+        data['bigM3'] = (data['pOptTimeLimit'] - data['pReqTimeLimit'])
 
         return {None: data}
 
@@ -155,17 +161,6 @@ class BasicMip(Experiment):
             listaCom.append([])
             for j in range(3):
                 listaCom[i].append(sheet_inst1.cell_value(i, j))  # str
-
-        # Parameters
-        VehCAP = sheet_param.cell_value(1, 1)  # valor = 22 pallets
-        FleetSize = sheet_param.cell_value(2, 1)  # valor= 8 vehicles
-        LoadTime = sheet_param.cell_value(3, 1)  # valor= 1 min
-        UnloadTime = sheet_param.cell_value(4, 1)  # valor = 0.5 min
-        ReqTimeLimit = sheet_param.cell_value(5, 1)  # valor = 8 hours = 480 min
-        OptTimeLimit = sheet_param.cell_value(6, 1)  # valor = 10 hours = 600 min
-        BigM1 = sheet_param.cell_value(7, 1)  # valor = max TripDuration = 35 min
-        BigM2 = sheet_param.cell_value(8, 1)  # valor = OptTimeLimit = 600 min
-        BigM3 = sheet_param.cell_value(9, 1)  # valor = OptTimeLimit-ReqTimeLimit = 120 min
 
         listaTrip = []
         TripDuration = listaTrip

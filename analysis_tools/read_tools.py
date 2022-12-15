@@ -8,14 +8,12 @@ import pandas as pd
 def read_input_data(file_path):
 
     df_parameters = pd.read_excel(file_path, sheet_name ="parameters")
-    df_warehouses = pd.read_excel(file_path, sheet_name ="warehouse")
     df_trip_durations = pd.read_excel(file_path, sheet_name ="trip_duration")
     df_commodities = pd.read_excel(file_path, sheet_name ="comp_quantity_inst1")
 
     #to_records: Crea una matriz con el índice, el nombre del parámetro y el valor
     df_parameters.columns = ['param_name', 'param_value']
     parameters = df_parameters.to_dict('records')
-    warehouses = df_warehouses.to_dict('records')
     json_trip_durations = df_trip_durations.to_dict('records')
     json_commodities = df_commodities.to_dict('records')
 
@@ -24,7 +22,6 @@ def read_input_data(file_path):
 
     dct_input_data={
         'parameters': json_parameters,
-        # 'warehouses': warehouses,
         'trip_durations': json_trip_durations,
         'commodities': json_commodities
     }

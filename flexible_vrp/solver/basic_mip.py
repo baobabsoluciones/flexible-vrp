@@ -15,9 +15,9 @@ class BasicMip(Experiment):
 
         # Estimating bigMs
         # Todo: estimate values as a funcion of instance parameters
-        bigM1 = 100
-        bigM2 = 100
-        bigM3 = 100
+        bigM1 = 35
+        bigM2 = 600
+        bigM3 = 120
 
         # Generating the dictionary for Pyomo
         data = dict()
@@ -27,6 +27,12 @@ class BasicMip(Experiment):
 
         # Adding the parameters
         data['pVehCAP'] = {None: self.instance.data['parameters']['vehicle_capacity']}
+        data['pFleetSize'] = {None: self.instance.data['parameters']['fleet_size']}
+        data['pLoadTime'] = {None: self.instance.data['parameters']['load_pallet']}
+        data['pUnloadTime'] = {None: self.instance.data['parameters']['unload_pallet']}
+        data['pReqTimeLimit'] = {None: self.instance.data['parameters']['req_time_limit']}
+        data['pOptTimeLimit'] = {None: self.instance.data['parameters']['opt_time_limit']}
+
         # Todo: hacer lo mismo para el resto de parámetros
 
         # Adding the sWarehouses set.

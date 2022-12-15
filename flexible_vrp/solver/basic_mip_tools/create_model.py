@@ -64,14 +64,19 @@ def create_model():
             sum(model.vLoadQuantity[v, s, c] for  c in model.sCommodities)
     def fc2_cap_max(model, v, s):
         return sum(model.vQuantity[v, s, c] for c in model.sCommodities) <= model.pCapacity
+
     def fc3_load_req(model, c):
         if model.sCommodities[3]==1:
             return sum(model.vLoadQuantity[v, s, c] for v in model.sVehicles \
             for s in model.sStops) == model.sCommodities[2]
+        else:
+            return Constraint.skip
     def fc4_unload_req(model, c):
         if model.sCommodities[3] == 1:
             return sum(model.vUnloadQuantity[v, s, c] for v in model.sVehicles \
             for s in model.sStops) == model.sCommodities[2]
+        else:
+            return Constraint.skip
     def fc5_correct_unload(model,v,s,w):
         if model.sCommodities[1]==model.sWarehouses:
             return sum(model.vUnloadQuantity[v,s,c] for c in model.sCommodities) <= \
@@ -83,13 +88,15 @@ def create_model():
         if model.sCommodities[1] == model.sWarehouses:
             return sum(model.vLoadQuantity[v, s, c] for c in model.sCommodities) <= \
             model.sCommodities[2] * model.vAlpha[v, s, w]  #model.sCommodities[2]
-
+        else:
+            return Constraint.skip
     def fc7_trip_duration(model, v, s, w, w2):
         if w!=w2:
             s2 = s + 1
             return model.vTripDuration[v, s, s2] >= model.pTripDuration[w,w2] \
             - model.pBigM1 * (2-model.vAlpha[v,s,w]-model.vAlpha[v,s2,w2])
-
+        else:
+            return Constraint.skip
     def fc8_unload_time(model, v, s):
         return model.vUnloadDuration[v, s] == sum(model.vUnloadQuantity[v,s,c] for c in model.sCommodities) \
         * model.pUnloadTime
@@ -107,14 +114,20 @@ def create_model():
     def fc13_simultaneidad_veh_1(model,v,s,v2,s2):
         if v!=v2:
             return model.vBeta1[v,s,v2,s2] + model.vBeta2[v2,s2,v,s] >= model.vAlpha[v,s,w] + model.vAlpha[v2,s2,w] -1
+        else:
+            return Constraint.skip
     def fc14_simultaneidad_veh_2(model,v,s,v2,s2):
         if v!= v2:
             return model.vArrivalTime[v, s]>= model.vDepartureTime[v,s]- (1-model.vBeta1[v,s,v2,s2]) * model.pBigM2
+        else:
+            return Constraint.skip
     def fc15_time_limit_1(model,v,s):
         return model.vUnloadTime[v,s] <= model.pReqTimeLimit + model.vGamma[v,s] * model.pBigM3
     def fc16_time_limit_2(model,v,s,c):
         if model.sCommodities[3]==1:
             return model.vLoadQuantity[v,s,c] <= (1-model.vGamma[v,s]) * model.pVehCAP
+        else:
+            return Constraint.skip
     def fc17_time_limit_3(model,v,s):
         return model.vUnloadTime[v,s] <= model.pOptTimeLimit
 

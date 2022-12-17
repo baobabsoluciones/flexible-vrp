@@ -1,6 +1,6 @@
 # Class to solve the problem with a basic mip.
 
-from ..core import Experiment, Solution
+from flexible_vrp.core import Experiment, Solution
 from .basic_mip_tools.create_model import create_model
 from pyomo.environ import SolverFactory
 import pandas as pd

@@ -1,7 +1,7 @@
 # Class to solve the problem with a basic mip.
 
 from flexible_vrp.core import Experiment, Solution
-from .basic_mip_tools.create_model import create_model
+from flexible_vrp.solver.basic_mip_tools.create_model import create_model
 from pyomo.environ import SolverFactory
 import pandas as pd
 
@@ -35,12 +35,14 @@ class BasicMip(Experiment):
         # Adding the set for Commodities
         data['sCommodities'] = {None: [(c['origin'], c['destination'], c['quantity'], c['required'])
                                     for c in self.instance.data['commodities']]}
-
+        # todo: estimate the number of stops for the current data. Remove from this method
+        self.instance.data['parameters']['no_stops'] = 3
         # Adding the set for Stops
-        data['sStops'] = {None: [s for s in range(self.instance.data['parameters']['no_stops'])]}
+        data['sStops'] = {None: [s for s in range(int(self.instance.data['parameters']['no_stops']))]}
+        data['sStopsButLast'] = {None: [s for s in range(int(self.instance.data['parameters']['no_stops']-1))]}
 
         # Adding the set for Vehicles
-        data['sVehicles'] = {None: [v for v in range(self.instance.data['parameters']['fleet_size'])]}
+        data['sVehicles'] = {None: [v for v in range(int(self.instance.data['parameters']['fleet_size']))]}
 
         # Adding the parameters
         data['pVehCAP'] = {None: self.instance.data['parameters']['vehicle_capacity']}
@@ -56,9 +58,9 @@ class BasicMip(Experiment):
 
         # Adding the parameters BigM
 
-        data['bigM1'] = max (data['pTripDuration'])
+        data['bigM1'] = max(data['pTripDuration'])
         data['bigM2'] = data['pOptTimeLimit']
-        data['bigM3'] = (data['pOptTimeLimit'] - data['pReqTimeLimit'])
+        data['bigM3'] = (data['pOptTimeLimit'][None] - data['pReqTimeLimit'][None])
 
         return {None: data}
 
@@ -101,7 +103,7 @@ class BasicMip(Experiment):
         return 1 #dict(status=STATUS_TIME_LIMIT, status_sol=SOLUTION_STATUS_FEASIBLE)
 
 
-        """
+        '''
         Example of solve method:
         
         model = create_model()        
@@ -136,39 +138,8 @@ class BasicMip(Experiment):
             self.variables_to_excel(model_result)
 
         return dict(status=STATUS_TIME_LIMIT, status_sol=SOLUTION_STATUS_FEASIBLE)
-        """
-        """
-        # Sets
-       """
-        #["v{}".format(n) for n in range(1,NUM+1)]
-        """
-        listaVeh = []
-        Vehicles = listaVeh
-        for i in range(sheet_param.cell_value(2, 1)):
-            listaVeh.append(i + 1)
+        '''
 
-        listaStops = []
-        Stops = listaStops
-
-        listaW = []
-        Wareahouses = listaW
-        for i in range(0, sheet_warehouse.nrows):
-            listaW.append(sheet_warehouse.cell_value(i, 0))  # como decirle que es str
-
-        listaCom = []
-        Commodities = listaCom
-        for i in range(0, sheet_inst1.nrows):
-            listaCom.append([])
-            for j in range(3):
-                listaCom[i].append(sheet_inst1.cell_value(i, j))  # str
-
-        listaTrip = []
-        TripDuration = listaTrip
-        for i in range(0, sheet_trip_duration.nrows):
-            listaTrip.append([])
-            for j in range(3):
-                listaTrip[i].append(sheet_trip_duration.cell_value(i, j))  # leer string
-        """
         model = create_model()
         self.solution = Solution({"data": "This solver is not implemented yet"})
         return {}

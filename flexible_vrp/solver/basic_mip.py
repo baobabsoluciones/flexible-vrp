@@ -3,7 +3,7 @@
 from flexible_vrp.core import Experiment, Solution
 from flexible_vrp.solver.basic_mip_tools.create_model import create_model
 from pyomo.environ import SolverFactory
-import pandas as pd
+
 
 class BasicMip(Experiment):
     def __init__(self, instance, solution=None):
@@ -24,43 +24,65 @@ class BasicMip(Experiment):
         data = dict()
 
         # Adding the set for Warehouses
-            # Retrieving orings and destination
-        origins = set([c['location1'] for c in self.instance.data['trip_durations']])
-        destinations = set([c['location2'] for c in self.instance.data['trip_durations']])
-            # Getting a list from the union of destinations and origins
+        # Retrieving orings and destination
+        origins = set([c["location1"] for c in self.instance.data["trip_durations"]])
+        destinations = set(
+            [c["location2"] for c in self.instance.data["trip_durations"]]
+        )
+        # Getting a list from the union of destinations and origins
         warehouses = list(origins.union(destinations))
-            # Adding the info to the output dict
-        data['sWarehouses'] = {None: warehouses}
+        # Adding the info to the output dict
+        data["sWarehouses"] = {None: warehouses}
 
         # Adding the set for Commodities
-        data['sCommodities'] = {None: [(c['origin'], c['destination'], c['quantity'], c['required'])
-                                    for c in self.instance.data['commodities']]}
+        data["sCommodities"] = {
+            None: [
+                (c["origin"], c["destination"], c["quantity"], c["required"])
+                for c in self.instance.data["commodities"]
+            ]
+        }
         # todo: estimate the number of stops for the current data. Remove from this method
-        self.instance.data['parameters']['no_stops'] = 3
+        self.instance.data["parameters"]["no_stops"] = 3
         # Adding the set for Stops
-        data['sStops'] = {None: [s for s in range(int(self.instance.data['parameters']['no_stops']))]}
-        data['sStopsButLast'] = {None: [s for s in range(int(self.instance.data['parameters']['no_stops']-1))]}
+        data["sStops"] = {
+            None: [s for s in range(int(self.instance.data["parameters"]["no_stops"]))]
+        }
+        data["sStopsButLast"] = {
+            None: [
+                s for s in range(int(self.instance.data["parameters"]["no_stops"] - 1))
+            ]
+        }
 
         # Adding the set for Vehicles
-        data['sVehicles'] = {None: [v for v in range(int(self.instance.data['parameters']['fleet_size']))]}
+        data["sVehicles"] = {
+            None: [
+                v for v in range(int(self.instance.data["parameters"]["fleet_size"]))
+            ]
+        }
 
         # Adding the parameters
-        data['pVehCAP'] = {None: self.instance.data['parameters']['vehicle_capacity']}
-        data['pFleetSize'] = {None: self.instance.data['parameters']['fleet_size']}
-        data['pLoadTime'] = {None: self.instance.data['parameters']['load_pallet']}
-        data['pUnloadTime'] = {None: self.instance.data['parameters']['unload_pallet']}
-        data['pReqTimeLimit'] = {None: self.instance.data['parameters']['req_time_limit']}
-        data['pOptTimeLimit'] = {None: self.instance.data['parameters']['opt_time_limit']}
+        data["pVehCAP"] = {None: self.instance.data["parameters"]["vehicle_capacity"]}
+        data["pFleetSize"] = {None: self.instance.data["parameters"]["fleet_size"]}
+        data["pLoadTime"] = {None: self.instance.data["parameters"]["load_pallet"]}
+        data["pUnloadTime"] = {None: self.instance.data["parameters"]["unload_pallet"]}
+        data["pReqTimeLimit"] = {
+            None: self.instance.data["parameters"]["req_time_limit"]
+        }
+        data["pOptTimeLimit"] = {
+            None: self.instance.data["parameters"]["opt_time_limit"]
+        }
 
         # Adding the pCommodities parameter
-        data['pTripDuration'] = {(x['location1'], x['location2']): x['time'] for x in
-                                 self.instance.data['trip_durations']}
+        data["pTripDuration"] = {
+            (x["location1"], x["location2"]): x["time"]
+            for x in self.instance.data["trip_durations"]
+        }
 
         # Adding the parameters BigM
 
-        data['bigM1'] = max(data['pTripDuration'])
-        data['bigM2'] = data['pOptTimeLimit']
-        data['bigM3'] = (data['pOptTimeLimit'][None] - data['pReqTimeLimit'][None])
+        data["bigM1"] = max(data["pTripDuration"])
+        data["bigM2"] = data["pOptTimeLimit"]
+        data["bigM3"] = data["pOptTimeLimit"][None] - data["pReqTimeLimit"][None]
 
         return {None: data}
 
@@ -86,7 +108,7 @@ class BasicMip(Experiment):
             logfile=logfile,
         )
 
-        self.status = self.get_status(result) # todo: create method
+        self.status = self.get_status(result)  # todo: create method
         model_result = model_instance
         obj = model_instance.f_obj()
         print("Status: {} Objective value: {}".format(self.status, obj))
@@ -100,10 +122,9 @@ class BasicMip(Experiment):
         #     self.solution = self.get_empty_solution()
         #     self.variables_to_excel(model_result)
 
-        return 1 #dict(status=STATUS_TIME_LIMIT, status_sol=SOLUTION_STATUS_FEASIBLE)
+        return 1  # dict(status=STATUS_TIME_LIMIT, status_sol=SOLUTION_STATUS_FEASIBLE)
 
-
-        '''
+        """
         Example of solve method:
         
         model = create_model()        
@@ -138,7 +159,7 @@ class BasicMip(Experiment):
             self.variables_to_excel(model_result)
 
         return dict(status=STATUS_TIME_LIMIT, status_sol=SOLUTION_STATUS_FEASIBLE)
-        '''
+        """
 
         model = create_model()
         self.solution = Solution({"data": "This solver is not implemented yet"})

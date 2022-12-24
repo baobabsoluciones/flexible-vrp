@@ -3,7 +3,6 @@
 import json
 import pandas as pd
 
-
 def read_input_data(file_path):
 
     df_parameters = pd.read_excel(file_path, sheet_name="parameters")

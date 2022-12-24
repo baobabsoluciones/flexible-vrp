@@ -18,7 +18,7 @@ def create_model():
 
     # Derived sets
     model.sTripDuration = Set(dimen=3)
-    model.c7_constraint_domain = Set(dimen=5)
+    model.c7_constraint_domain = Set(dimen=4)
 
     # Parameters
     model.pVehCAP = Param(default=0, mutable=True)  # valor = 22 pallets
@@ -148,11 +148,11 @@ def create_model():
     model.c4_unload_req = Constraint(model.sCommodities, rule=fc4_unload_req)
     model.c5_correct_unload = Constraint(model.sVehicles, model.sStops, model.sWarehouses, rule=fc5_correct_unload)
     model.c6_max_load = Constraint(model.sVehicles, model.sStops, model.sWarehouses, rule=fc6_max_load)
-    model.c7_trip_duration = Constraint(model.c7_constraint_domain, rule=fc7_trip_duration)
+    model.c7_trip_duration = Constraint(model.c7_constraint_domain, model.sStopsButLast, rule=fc7_trip_duration)
     model.c8_unload_time = Constraint(model.sVehicles, model.sStops, rule=fc8_unload_time)
     model.c9_load_time = Constraint(model.sVehicles, model.sStops, rule=fc9_load_time)
     model.c10_departure_time = Constraint(model.sVehicles, model.sStops, rule=fc10_departure_time)
-    model.c11_arrival_time = Constraint(model.sVehicles, model.sStops, rule=fc11_arrival_time)
+    model.c11_arrival_time = Constraint(model.sVehicles, model.sStopsButLast, rule=fc11_arrival_time)
     model.c12_unload_time = Constraint(model.sVehicles, model.sStops, rule=fc12_unload_time)
     model.c13_simultaneity_veh_1 = Constraint(model.sVehicles, model.sStops, model.sVehicles, model.sStops,
                                               model.sWarehouses, rule=fc13_simultaneity_veh_1)

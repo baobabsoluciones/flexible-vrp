@@ -164,12 +164,10 @@ class BasicMip(Experiment):
         return {}
 
     def set_solver(self, options):
-        """
-        Create the solver object and set the relevant options.
-
-        :param options: dict of options.
-        :return: the pyomo solver
-        """
+        # Create the solver object and set the relevant options.
+        #
+        # :param options: dict of options.
+        # :return: the pyomo solver
         if "solver_name" in options:
             opt = SolverFactory(options["solver_name"])
         else:

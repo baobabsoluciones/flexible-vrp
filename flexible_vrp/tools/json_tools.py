@@ -28,6 +28,7 @@ def safe_value(x):
             return 0
     except:
         return 0
+# safe_value(model_result.vMyVariable[1,2])
 
 
 def to_json(data, path):

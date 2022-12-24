@@ -1,6 +1,7 @@
 import json
 import pyomo.environ as pyo
 
+
 def from_json(path: str):
     """
     :param path: path to json file
@@ -10,6 +11,8 @@ def from_json(path: str):
     with open(path, "r") as f:
         data_json = json.load(f)
     return data_json
+
+
 def safe_value(x):
     """
     Safely apply pyomo value to a variable.

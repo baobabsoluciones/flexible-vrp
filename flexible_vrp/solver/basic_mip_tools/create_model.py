@@ -13,7 +13,7 @@ def create_model():
     model.sStops = Set()
     model.sStopsButLast = Set()
     model.sWarehouses = Set()
-    model.sCommodities = Set()
+    model.sCommodities = Set(dimen=4)
     # Derived sets
     model.sTripDuration = Set(dimen=3)
     model.c7_constraint_domain = Set(dimen=5)
@@ -63,23 +63,26 @@ def create_model():
             sum(model.vQuantity[v, s, c] for c in model.sCommodities) - \
             sum(model.vUnloadQuantity[v, s, c] for c in model.sCommodities) + \
             sum(model.vLoadQuantity[v, s, c] for c in model.sCommodities)
+
     def fc2_cap_max(model, v, s):
         return sum(model.vQuantity[v, s, c] for c in model.sCommodities) <= model.pVehCAP
 
     def fc3_load_req(model, c):
-        if model.sCommodities[3]==1:
-            return sum(model.vLoadQuantity[v, s, c] for v in model.sVehicles \
-            for s in model.sStops) == model.sCommodities[2]
+        if model.sCommodities[3] == 1:
+            return sum(model.vLoadQuantity[v, s, c] for v in model.sVehicles
+                       for s in model.sStops) == model.sCommodities[2]
         else:
             return Constraint.skip
+
     def fc4_unload_req(model, c):
         if model.sCommodities[3] == 1:
-            return sum(model.vUnloadQuantity[v, s, c] for v in model.sVehicles \
-            for s in model.sStops) == model.sCommodities[2]
+            return sum(model.vUnloadQuantity[v, s, c] for v in model.sVehicles
+                       for s in model.sStops) == model.sCommodities[2]
         else:
             return Constraint.skip
+
     def fc5_correct_unload(model, v, s, w):
-        if model.sCommodities[1]==model.sWarehouses:
+        if model.sCommodities[1] == model.sWarehouses:
             return sum(model.vUnloadQuantity[v, s, c] for c in model.sCommodities) <= \
             model.sCommodities[2] * model.vAlpha[v, s, w]
         else:
@@ -154,3 +157,4 @@ def create_model():
     model.c17_time_limit_3 = Constraint(model.sVehicles, model.sStops, rule=fc17_time_limit_3)
 
     return model
+# fmt: on

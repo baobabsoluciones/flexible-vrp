@@ -60,17 +60,16 @@ def create_model():
     def fc2_cap_max(model, v, s):
         return sum(model.vQuantity[v, s, c] for c in model.sCommodities) <= model.pVehCAP
 
-    def fc3_load_req(model, c):
-        if model.sCommodities[3] == 1:
-            return sum(model.vLoadQuantity[v, s, c] for v in model.sVehicles
-                       for s in model.sStops) == model.sCommodities[2]
-
+    def fc3_load_req(model, origin, destination, quantity, compulsory):
+        if compulsory == 1:
+            return sum(model.vLoadQuantity[v, s, origin, destination, quantity, compulsory] for v in model.sVehicles
+                       for s in model.sStops) == quantity
         else:
             return Constraint.Skip
 
-    def fc4_unload_req(model, c):
+    def fc4_unload_req(model, origin, destination, quantity, compulsory):
         if model.sCommodities[3] == 1:
-            return sum(model.vUnloadQuantity[v, s, c] for v in model.sVehicles
+            return sum(model.vUnloadQuantity[v, s, origin, destination, quantity, compulsory] for v in model.sVehicles
                        for s in model.sStops) == model.sCommodities[2]
         else:
             return Constraint.Skip
@@ -110,7 +109,7 @@ def create_model():
                + model.vUnloadDuration[v, s]
 
     def fc11_arrival_time(model, v, s):
-        s2 = s+1
+        s2 = s + 1
         return model.vArrivalTime[v, s2] == model.vDepartureTime[v, s] + model.vTripDuration[v, s, s2]
 
     def fc12_unload_time(model, v, s):
@@ -133,9 +132,10 @@ def create_model():
     def fc15_time_limit_1(model, v, s):
         return model.vUnloadTime[v, s] <= model.pReqTimeLimit + model.vGamma[v, s] * model.pBigM3
 
-    def fc16_time_limit_2(model, v, s, c):
+    def fc16_time_limit_2(model, v, s, origin, destination, quantity, compulsory):
         if model.sCommodities[3] == 1:
-            return model.vLoadQuantity[v, s, c] <= (1-model.vGamma[v, s]) * model.pVehCAP
+            return model.vLoadQuantity[v, s, origin, destination, quantity, compulsory] <= (1-model.vGamma[v, s]) \
+                   * model.pVehCAP
         else:
             return Constraint.Skip
 

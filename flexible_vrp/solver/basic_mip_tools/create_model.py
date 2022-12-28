@@ -68,9 +68,9 @@ def create_model():
             return Constraint.Skip
 
     def fc4_unload_req(model, origin, destination, quantity, compulsory):
-        if model.sCommodities[3] == 1:
+        if compulsory == 1:
             return sum(model.vUnloadQuantity[v, s, origin, destination, quantity, compulsory] for v in model.sVehicles
-                       for s in model.sStops) == model.sCommodities[2]
+                       for s in model.sStops) == quantity
         else:
             return Constraint.Skip
 
@@ -153,15 +153,15 @@ def create_model():
     model.c8_unload_time = Constraint(model.sVehicles, model.sStops, rule=fc8_unload_time)
     model.c9_load_time = Constraint(model.sVehicles, model.sStops, rule=fc9_load_time)
     model.c10_departure_time = Constraint(model.sVehicles, model.sStops, rule=fc10_departure_time)
-    model.c11_arrival_time = Constraint(model.sVehicles, model.sStopsButLast, rule=fc11_arrival_time)
-    model.c12_unload_time = Constraint(model.sVehicles, model.sStops, rule=fc12_unload_time)
-    model.c13_simultaneity_veh_1 = Constraint(model.sVehicles, model.sStops, model.sVehicles, model.sStops,
-                                              model.sWarehouses, rule=fc13_simultaneity_veh_1)
-    model.c14_simultaneity_veh_2 = Constraint(model.sVehicles, model.sStops, model.sVehicles, model.sStops,
-                                              rule=fc14_simultaneity_veh_2)
-    model.c15_time_limit_1 = Constraint(model.sVehicles, model.sStops, rule=fc15_time_limit_1)
-    model.c16_time_limit_2 = Constraint(model.sVehicles, model.sStops, model.sCommodities, rule=fc16_time_limit_2)
-    model.c17_time_limit_3 = Constraint(model.sVehicles, model.sStops, rule=fc17_time_limit_3)
+    # model.c11_arrival_time = Constraint(model.sVehicles, model.sStopsButLast, rule=fc11_arrival_time)
+    # model.c12_unload_time = Constraint(model.sVehicles, model.sStops, rule=fc12_unload_time)
+    # model.c13_simultaneity_veh_1 = Constraint(model.sVehicles, model.sStops, model.sVehicles, model.sStops,
+    #                                           model.sWarehouses, rule=fc13_simultaneity_veh_1)
+    # model.c14_simultaneity_veh_2 = Constraint(model.sVehicles, model.sStops, model.sVehicles, model.sStops,
+    #                                           rule=fc14_simultaneity_veh_2)
+    # model.c15_time_limit_1 = Constraint(model.sVehicles, model.sStops, rule=fc15_time_limit_1)
+    # model.c16_time_limit_2 = Constraint(model.sVehicles, model.sStops, model.sCommodities, rule=fc16_time_limit_2)
+    # model.c17_time_limit_3 = Constraint(model.sVehicles, model.sStops, rule=fc17_time_limit_3)
 
     return model
 # fmt: on

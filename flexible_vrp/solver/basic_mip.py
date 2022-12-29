@@ -3,6 +3,7 @@
 from flexible_vrp.core import Experiment, Solution
 from flexible_vrp.solver.basic_mip_tools.create_model import create_model
 from pyomo.environ import SolverFactory
+from cornflow_client.constants import PYOMO_STOP_MAPPING
 
 
 class BasicMip(Experiment):
@@ -42,7 +43,7 @@ class BasicMip(Experiment):
             ]
         }
         # todo: estimate the number of stops for the current data. Remove from this method
-        self.instance.data["parameters"]["no_stops"] = 3
+        self.instance.data["parameters"]["no_stops"] = 4
         # Adding the set for Stops
         data["sStops"] = {
             None: [s for s in range(int(self.instance.data["parameters"]["no_stops"]))]
@@ -60,6 +61,12 @@ class BasicMip(Experiment):
             ]
         }
 
+        data["sTripDuration"] = {
+            None: [
+                (v, s, s + 1) for v in range(int(self.instance.data["parameters"]["fleet_size"]))
+                for s in range(int(self.instance.data["parameters"]["no_stops"] - 1))
+            ]
+        }
         # Adding the parameters
         data["pVehCAP"] = {None: self.instance.data["parameters"]["vehicle_capacity"]}
         data["pFleetSize"] = {None: self.instance.data["parameters"]["fleet_size"]}
@@ -107,7 +114,8 @@ class BasicMip(Experiment):
             warmstart=False,
             logfile=logfile,
         )
-
+        status = PYOMO_STOP_MAPPING[result.solver.termination_condition]
+        self.get_solution(model_instance)
         self.status = self.get_status(result)
         model_result = model_instance
         obj = model_instance.f_obj()
@@ -166,7 +174,7 @@ class BasicMip(Experiment):
     def set_solver(self, options):
         # Create the solver object and set the relevant options.
         #
-        # :param options: dict of options.
+        # param options: dict of options.
         # :return: the pyomo solver
         if "solver_name" in options:
             opt = SolverFactory(options["solver_name"])
@@ -175,3 +183,20 @@ class BasicMip(Experiment):
         if "solver_config" in options:
             opt.options.update(options["solver_config"])
         return opt
+
+    def get_solution(self, model_instance):
+        solution_dict = dict()
+        for v in model_instance.sVehicles:
+            print("Vehicle {}".format(v))
+            for s in model_instance.sStops:
+                print(" Stop {}".format(s))
+                print(" Location:")
+                for c in model_instance.sCommodities:
+                    print(model_instance.vLoadQuantity[v, s, c].value)
+                # df = pd.DataFrame.from_dict(
+                #     {key: model_instance.vLoadQuantity[key].value for key in model_instance.vLoadQuantity},
+                    # orient='index')
+                # print([c[0] for c in model_instance.sCommodities
+                #     if model_instance.vLoadQuantity[v, s, c].value > 0])
+
+        # return solution_dict

@@ -162,6 +162,10 @@ def create_model():
         return model.vTotalNonCompulsory <= sum(c[2] for c in model.sCommodities
                                                 if c[3] == 0)
 
+    def fc22_unload_max(model, v, s):
+        return sum(model.vUnloadQuantity[v, s, c] for c in model.sCommodities) <= model.pVehCAP
+
+
     def f_obj_expression(model):
         return model.vTotalNonCompulsory
 
@@ -172,7 +176,7 @@ def create_model():
     model.c4_unload_req = Constraint(model.sCommodities, rule=fc4_unload_req)
     model.c5_correct_unload = Constraint(model.sVehicles, model.sStops, model.sWarehouses, rule=fc5_correct_unload)
     model.c6_max_load = Constraint(model.sVehicles, model.sStops, model.sWarehouses, rule=fc6_max_load)
-    model.c7_trip_duration = Constraint(model.c7_constraint_domain, model.sStopsButLast, rule=fc7_trip_duration)
+    # model.c7_trip_duration = Constraint(model.c7_constraint_domain, model.sStopsButLast, rule=fc7_trip_duration)
     # model.c8_unload_time = Constraint(model.sVehicles, model.sStops, rule=fc8_unload_time)
     # model.c9_load_time = Constraint(model.sVehicles, model.sStops, rule=fc9_load_time)
     # model.c10_departure_time = Constraint(model.sVehicles, model.sStops, rule=fc10_departure_time)
@@ -189,6 +193,7 @@ def create_model():
     model.c19_load_max = Constraint(model.sVehicles, model.sStops, rule=fc19_load_max)
     model.c20_no_total_compulsory = Constraint(rule=fc_20_total_non_compulsory)
     model.c21_total_non_compulsory_bound = Constraint(rule=fc_21_total_non_compulsory_bound)
+    model.c22_unload_max = Constraint(model.sVehicles, model.sStops, rule=fc22_unload_max)
     model.obj_func = Objective(rule=f_obj_expression, sense=pyomo.core.maximize)
     return model
 # fmt: on

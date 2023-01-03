@@ -1,4 +1,5 @@
 # Class to solve the problem with a basic mip.
+import pandas as pd
 
 from flexible_vrp.core import Experiment, Solution
 from flexible_vrp.solver.basic_mip_tools.create_model import create_model
@@ -120,7 +121,8 @@ class BasicMip(Experiment):
         model_result = model_instance
         obj = model_instance.f_obj()
         print("Status: {} Objective value: {}".format(self.status, obj))
-        #
+
+                #
         # # Prepare solution
         # if self.is_feasible(self.status): #todo: create method
         #     self.totals = self.get_total(model_result, result)
@@ -185,18 +187,18 @@ class BasicMip(Experiment):
         return opt
 
     def get_solution(self, model_instance):
-        solution_dict = dict()
-        for v in model_instance.sVehicles:
-            print("Vehicle {}".format(v))
-            for s in model_instance.sStops:
-                print(" Stop {}".format(s))
-                print(" Location:")
-                for c in model_instance.sCommodities:
-                    print(model_instance.vLoadQuantity[v, s, c].value)
-                # df = pd.DataFrame.from_dict(
-                #     {key: model_instance.vLoadQuantity[key].value for key in model_instance.vLoadQuantity},
-                    # orient='index')
-                # print([c[0] for c in model_instance.sCommodities
-                #     if model_instance.vLoadQuantity[v, s, c].value > 0])
+        data = [[v, s, c[0], c[1], c[2], c[3], model_instance.vLoadQuantity[v, s, c].value,
+                model_instance.vUnloadQuantity[v, s, c].value,
+                model_instance.vQuantity[v, s, c].value]
+                for v in model_instance.sVehicles
+                for s in model_instance.sStops
+                for c in model_instance.sCommodities
+                if model_instance.vLoadQuantity[v, s, c].value +
+                model_instance.vUnloadQuantity[v, s, c].value +
+                model_instance.vQuantity[v, s, c].value
+                > 0
+                ]
+        df = pd.DataFrame(data, columns=["Vehicle", "Stop", "Comm (or.)", "Comm (dest.)", "Comm (qty)",
+        "Comm (comp.)","Load", "Unload", "Qty"])
 
-        # return solution_dict
+        return df

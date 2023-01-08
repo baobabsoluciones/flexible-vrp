@@ -199,6 +199,6 @@ class BasicMip(Experiment):
                 > 0
                 ]
         df = pd.DataFrame(data, columns=["Vehicle", "Stop", "Comm (or.)", "Comm (dest.)", "Comm (qty)",
-        "Comm (comp.)","Load", "Unload", "Qty"])
+                                         "Comm (comp.)", "Load", "Unload", "Qty"])
 
         return df

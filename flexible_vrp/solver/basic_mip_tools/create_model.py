@@ -52,7 +52,6 @@ def create_model():
     model.vUnloadDuration = Var(model.sVehicles, model.sStops, domain=NonNegativeReals)
     model.vTripDuration = Var(model.sTripDuration, domain=NonNegativeReals)
 
-
     # Constraints
     def fc1_balance_commodities(model, v, s):
         s2 = s + 1

@@ -187,19 +187,18 @@ class BasicMip(Experiment):
         return opt
 
     def get_solution(self, model_instance):
-        data = [[v, s, w, c[0], c[1], c[2], c[3], model_instance.vLoadQuantity[v, s, c].value,
+        data = [[v, s, c[0], c[1], c[2], c[3], model_instance.vLoadQuantity[v, s, c].value,
                 model_instance.vUnloadQuantity[v, s, c].value,
                 model_instance.vQuantity[v, s, c].value]
                 for v in model_instance.sVehicles
                 for s in model_instance.sStops
-                for w in model_instance.sWarehouses
                 for c in model_instance.sCommodities
                 if model_instance.vLoadQuantity[v, s, c].value +
                 model_instance.vUnloadQuantity[v, s, c].value +
                 model_instance.vQuantity[v, s, c].value
                 > 0
                 ]
-        df = pd.DataFrame(data, columns=["Vehicle", "Stop", "Warehouses", "Comm (or.)", "Comm (dest.)", "Comm (qty)",
+        df = pd.DataFrame(data, columns=["Vehicle", "Stop", "Comm (or.)", "Comm (dest.)", "Comm (qty)",
                                          "Comm (comp.)", "Load", "Unload", "Qty"])
 
 

@@ -10,7 +10,7 @@ config = {
     "solver_config": {"TimeLimit": 120, "gap": 0.01},
 }
 # data = load_json("./data/simple_instance.json")
-file_path = "data/datos2.xlsx"
+file_path = "data/datos_min.xlsx"
 data = read_input_data(file_path)
 
 # Solve the problem.

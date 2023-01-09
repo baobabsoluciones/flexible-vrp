@@ -53,12 +53,18 @@ def create_model():
     model.vTripDuration = Var(model.sTripDuration, domain=NonNegativeReals)
 
     # Constraints
+    def fc0_warehouses(model, v, s):
+        return
     def fc1_balance_commodities(model, v, s):
         s2 = s + 1
         return sum(model.vQuantity[v, s2, c] for c in model.sCommodities) == \
             sum(model.vQuantity[v, s, c] for c in model.sCommodities) - \
             sum(model.vUnloadQuantity[v, s, c] for c in model.sCommodities) + \
             sum(model.vLoadQuantity[v, s, c] for c in model.sCommodities)
+
+    def fc1_2_balance_commodities(model, v):
+        s = 0
+        return sum(model.vQuantity[v, s, c] for c in model.sCommodities) == 0
 
     def fc2_cap_max(model, v, s):
         return sum(model.vQuantity[v, s, c] for c in model.sCommodities) <= model.pVehCAP
@@ -95,6 +101,10 @@ def create_model():
     def fc7_zero_load_on_last_stop(model, v):
         s = model.sStops[len(model.sStops)-1]
         return sum(model.vLoadQuantity[v, s, c] for c in model.sCommodities) == 0
+
+    def fc7_2_zero_unload_on_first_stop(model, v):
+        s = 0
+        return sum(model.vUnloadQuantity[v, s, c] for c in model.sCommodities) == 0
 
     def fc8_load_max_veh(model, v, s):
         return sum(model.vLoadQuantity[v, s, c] for c in model.sCommodities) <= model.pVehCAP
@@ -173,12 +183,14 @@ def create_model():
 
     # Activate constraints
     model.c1_balance_commodities = Constraint(model.sVehicles, model.sStopsButLast, rule=fc1_balance_commodities)
+    model.c1_2_balance_commodities = Constraint(model.sVehicles, rule=fc1_2_balance_commodities)
     model.c2_cap_max = Constraint(model.sVehicles, model.sStops, rule=fc2_cap_max)
     model.c3_load_req = Constraint(model.sCommodities, rule=fc3_load_req)
     model.c4_unload_req = Constraint(model.sCommodities, rule=fc4_unload_req)
-    model.c5_max_unload_total_comm = Constraint(model.sVehicles, model.sStops, model.sWarehouses, model.sCommodities, rule=fc5_max_unload_total_comm)
-    model.c6_max_load_total_comm = Constraint(model.sVehicles, model.sStops, model.sWarehouses, model.sCommodities, rule=fc6_max_load_total_comm)
+    # model.c5_max_unload_total_comm = Constraint(model.sVehicles, model.sStops, model.sWarehouses, model.sCommodities, rule=fc5_max_unload_total_comm)
+    # model.c6_max_load_total_comm = Constraint(model.sVehicles, model.sStops, model.sWarehouses, model.sCommodities, rule=fc6_max_load_total_comm)
     model.c7_zero_load_on_last_stop = Constraint(model.sVehicles, rule=fc7_zero_load_on_last_stop)
+    model.c7_2_zero_unload_on_first_stop = Constraint(model.sVehicles, rule=fc7_2_zero_unload_on_first_stop)
     model.c8_load_max_veh = Constraint(model.sVehicles, model.sStops, rule=fc8_load_max_veh)
     model.c9_unload_max_veh = Constraint(model.sVehicles, model.sStops, rule=fc9_unload_max_veh)
     model.c10_no_total_compulsory = Constraint(rule=fc_10_total_non_compulsory)

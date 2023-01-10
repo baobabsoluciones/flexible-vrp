@@ -87,15 +87,16 @@ def create_model():
             return model.vUnloadQuantity[v, s, origin, destination, quantity, compulsory] <= \
                    quantity * model.vAlpha[v, s, w]
         else:
-            return model.vUnloadQuantity[v, s, origin, destination, quantity, compulsory] == 0
-            # return Constraint.Skip
+            # return model.vUnloadQuantity[v, s, origin, destination, quantity, compulsory] == 0
+            return Constraint.Skip
 
     def fc7_max_load_total_comm(model, v, s, w,  origin, destination, quantity, compulsory):
         if origin == w:
             return model.vLoadQuantity[v, s, origin, destination, quantity, compulsory] <= \
                    quantity * model.vAlpha[v, s, w]
         else:
-            return model.vLoadQuantity[v, s, origin, destination, quantity, compulsory] == 0
+            return Constraint.Skip
+            # return model.vLoadQuantity[v, s, origin, destination, quantity, compulsory] == 0
 
     def fc8_zero_load_on_last_stop(model, v):
         s = model.sStops[len(model.sStops) - 1]
@@ -185,20 +186,20 @@ def create_model():
 
     # Activate constraints
     model.c1_balance_commodities = Constraint(model.sVehicles, model.sStopsButLast, model.sCommodities,
-                                              rule=fc1_balance_commodities)
-    model.cc2_zero_quantity_on_first_stop = Constraint(model.sVehicles, rule=fc2_zero_quantity_on_first_stop)
+                                               rule=fc1_balance_commodities)
+    model.c2_zero_quantity_on_first_stop = Constraint(model.sVehicles, rule=fc2_zero_quantity_on_first_stop)
     model.c3_cap_max = Constraint(model.sVehicles, model.sStops, rule=fc3_cap_max)
     model.c4_load_req = Constraint(model.sCommodities, rule=fc4_load_req)
     model.c5_unload_req = Constraint(model.sCommodities, rule=fc5_unload_req)
-    # model.c6_max_unload_total_comm = Constraint(model.sVehicles, model.sStops, model.sWarehouses, model.sCommodities,
-    #                                             rule=fc6_max_unload_total_comm)
-    # model.c7_max_load_total_comm = Constraint(model.sVehicles, model.sStops, model.sWarehouses, model.sCommodities,
-    #                                             rule=fc7_max_load_total_comm)
+    model.c6_max_unload_total_comm = Constraint(model.sVehicles, model.sStops, model.sWarehouses, model.sCommodities,
+                                                 rule=fc6_max_unload_total_comm)
+    model.c7_max_load_total_comm = Constraint(model.sVehicles, model.sStops, model.sWarehouses, model.sCommodities,
+                                                rule=fc7_max_load_total_comm)
     model.c8_zero_load_on_last_stop = Constraint(model.sVehicles, rule=fc8_zero_load_on_last_stop)
     model.c9_zero_unload_on_first_stop = Constraint(model.sVehicles, rule=fc9_zero_unload_on_first_stop)
     model.c10_load_max_veh = Constraint(model.sVehicles, model.sStops, rule=fc10_load_max_veh)
     model.c11_unload_max_veh = Constraint(model.sVehicles, model.sStops, rule=fc11_unload_max_veh)
-    model.c12_no_total_compulsory = Constraint(rule=fc12_total_non_compulsory)
+    model.c12_total_non_compulsory = Constraint(rule=fc12_total_non_compulsory)
     model.c13_total_non_compulsory_bound = Constraint(rule=fc13_total_non_compulsory_bound)
     # model.c14_trip_duration = Constraint(model.c7_constraint_domain, model.sStopsButLast, rule=fc14_trip_duration)
     # model.c15_unload_time = Constraint(model.sVehicles, model.sStops, rule=fc15_unload_time)

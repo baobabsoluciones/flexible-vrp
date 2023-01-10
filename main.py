@@ -11,6 +11,7 @@ config = {
 }
 # data = load_json("./data/simple_instance.json")
 file_path = "data/datos_min.xlsx"
+# file_path = "data/datos_1_comm.xlsx"
 data = read_input_data(file_path)
 
 # Solve the problem.

@@ -54,7 +54,11 @@ class BasicMip(Experiment):
                 s for s in range(int(self.instance.data["parameters"]["no_stops"] - 1))
             ]
         }
-
+        # data["sStopsButFirst"] = {
+        #     None: [
+        #         s for s in range(1, int(self.instance.data["parameters"]["no_stops"]))
+        #     ]
+        # }
         # Adding the set for Vehicles
         data["sVehicles"] = {
             None: [

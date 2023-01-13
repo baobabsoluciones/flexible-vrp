@@ -192,7 +192,7 @@ def create_model():
     def fc25_single_warehouse_per_stop(model, v, s):
         return sum(model.vAlpha[v, s, w] for w in model.sWarehouses) <= 1
 
-    def fc26_consecutive_stop(model, v, s):
+    def fc26_consecutive_stops(model, v, s):
         s2 = s + 1
         return sum(model.vAlpha[v, s, w] for w in model.sWarehouses) >= \
             sum(model.vAlpha[v, s2, w] for w in model.sWarehouses)
@@ -237,7 +237,7 @@ def create_model():
     # model.c23_time_limit_2 = Constraint(model.sVehicles, model.sStops, model.sCommodities, rule=fc23_time_limit_2)
     # model.c24_time_limit_3 = Constraint(model.sVehicles, model.sStops, rule=fc24_time_limit_3)
     model.c25_single_warehouse_per_stop = Constraint(model.sVehicles, model.sStops, rule=fc25_single_warehouse_per_stop)
-    model.c26_consecutive_stop = Constraint(model.sVehicles, model.sStopsButLast, rule=fc26_consecutive_stop)
+    model.c26_consecutive_stops = Constraint(model.sVehicles, model.sStopsButLast, rule=fc26_consecutive_stops)
     model.c27_unload_after_load = Constraint(model.sVehicles, model.sCommodities, rule=fc27_unload_after_load)
 
     # Activate Objetive function

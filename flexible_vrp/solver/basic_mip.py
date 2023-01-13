@@ -191,9 +191,10 @@ class BasicMip(Experiment):
         return opt
 
     def get_solution(self, model_instance):
-        data = [[v, s, w, c[0], c[1], c[2], c[3], model_instance.vLoadQuantity[v, s, c].value,
-                model_instance.vUnloadQuantity[v, s, c].value,
-                model_instance.vQuantity[v, s, c].value]
+        data = [[v, s, w, c[0], c[1], c[2], c[3],
+                 model_instance.vQuantity[v, s, c].value,
+                model_instance.vLoadQuantity[v, s, c].value,
+                model_instance.vUnloadQuantity[v, s, c].value]
                 for v in model_instance.sVehicles
                 for s in model_instance.sStops
                 for w in model_instance.sWarehouses
@@ -205,7 +206,12 @@ class BasicMip(Experiment):
                 and model_instance.vAlpha[v, s, w].value == 1
                 ]
         df = pd.DataFrame(data, columns=["Vehicle", "Stop", "Warehouse", "Comm (or.)", "Comm (dest.)", "Comm (qty)",
-                                         "Comm (comp.)", "Load", "Unload", "Qty"])
+                                         "Comm (comp.)", "Qty (arr)", "Load", "Unload"])
+        df["Qty (dep)"] = df.groupby(by=["Vehicle", "Comm (or.)", "Comm (dest.)", "Comm (qty)",
+                                         "Comm (comp.)" ])["Qty (arr)"].shift(-1)
+        df["Qty (dep)"].fillna(0, inplace=True)
+
+
         data = [[v, s, w]
                 for v in model_instance.sVehicles
                 for s in model_instance.sStops

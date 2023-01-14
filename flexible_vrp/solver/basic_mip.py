@@ -54,11 +54,6 @@ class BasicMip(Experiment):
                 s for s in range(int(self.instance.data["parameters"]["no_stops"] - 1))
             ]
         }
-        # data["sStopsButFirst"] = {
-        #     None: [
-        #         s for s in range(1, int(self.instance.data["parameters"]["no_stops"]))
-        #     ]
-        # }
         # Adding the set for Vehicles
         data["sVehicles"] = {
             None: [
@@ -126,7 +121,6 @@ class BasicMip(Experiment):
         obj = model_instance.f_obj()
         print("Status: {} Objective value: {}".format(self.status, obj))
 
-                #
         # # Prepare solution
         # if self.is_feasible(self.status): #todo: create method
         #     self.totals = self.get_total(model_result, result)
@@ -192,7 +186,7 @@ class BasicMip(Experiment):
 
     def get_solution(self, model_instance):
         data = [[v, s, w, c[0], c[1], c[2], c[3],
-                 model_instance.vQuantity[v, s, c].value,
+                model_instance.vQuantity[v, s, c].value,
                 model_instance.vLoadQuantity[v, s, c].value,
                 model_instance.vUnloadQuantity[v, s, c].value]
                 for v in model_instance.sVehicles
@@ -208,9 +202,8 @@ class BasicMip(Experiment):
         df = pd.DataFrame(data, columns=["Vehicle", "Stop", "Warehouse", "Comm (or.)", "Comm (dest.)", "Comm (qty)",
                                          "Comm (comp.)", "Qty (arr)", "Load", "Unload"])
         df["Qty (dep)"] = df.groupby(by=["Vehicle", "Comm (or.)", "Comm (dest.)", "Comm (qty)",
-                                         "Comm (comp.)" ])["Qty (arr)"].shift(-1)
+                                         "Comm (comp.)"])["Qty (arr)"].shift(-1)
         df["Qty (dep)"].fillna(0, inplace=True)
-
 
         data = [[v, s, w]
                 for v in model_instance.sVehicles
@@ -218,6 +211,6 @@ class BasicMip(Experiment):
                 for w in model_instance.sWarehouses
                 if model_instance.vAlpha[v, s, w].value == 1
                 ]
-        df_alfpha = pd.DataFrame(data, columns=["Vehicle", "Stop", "Warehouse"])
+        df_alpha = pd.DataFrame(data, columns=["Vehicle", "Stop", "Warehouse"])
 
-        return df, df_alfpha
+        return df, df_alpha

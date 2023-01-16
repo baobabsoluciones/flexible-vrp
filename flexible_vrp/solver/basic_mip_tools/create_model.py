@@ -55,13 +55,16 @@ def create_model():
     # Constraints
 
     def fc1_balance_commodities(model, v, s, origin, destination, quantity, compulsory):
-        # s1 = s - 1
         s2 = s + 1
         return model.vQuantity[v, s2, origin, destination, quantity, compulsory] == \
             model.vQuantity[v, s, origin, destination, quantity, compulsory] \
             - model.vUnloadQuantity[v, s, origin, destination, quantity, compulsory] \
             + model.vLoadQuantity[v, s, origin, destination, quantity, compulsory]
 
+    # def fc1_2_balance_last_stop(model, v, origin, destination, quantity, compulsory):
+        # s = model.sStops[len(model.sStops) - 1]
+        # return model.vQuantity[v, s, origin, destination, quantity, compulsory] == \
+            # model.vUnloadQuantity[v, s, origin, destination, quantity, compulsory]
     def fc2_zero_quantity_on_first_stop(model, v):
         s = 0
         return sum(model.vQuantity[v, s, c] for c in model.sCommodities) == 0
@@ -199,8 +202,8 @@ def create_model():
     #         sum(model.vLoadQuantity[v, s, origin, destination, quantity, compulsory] for s in model.sStops)
 
     def fc29_alpha_value(model, v, s, w):
-        return model.vAlpha[v, s, w] <= sum(model.vUnloadQuantity[v, s, c] for c in model.sCommodities) \
-               + sum(model.vLoadQuantity[v, s, c] for c in model.sCommodities)
+        return model.vAlpha[v, s, w] <= sum(model.vUnloadQuantity[v, s, c] +
+                                            model.vLoadQuantity[v, s, c]for c in model.sCommodities)
 
     # Objective Function
     def f_obj_expression(model):
@@ -209,6 +212,7 @@ def create_model():
     # Activate constraints
     model.c1_balance_commodities = Constraint(model.sVehicles, model.sStopsButLast, model.sCommodities,
                                               rule=fc1_balance_commodities)
+    # model.c1_2_balance_last_stop = Constraint(model.sVehicles, model.sCommodities,rule=fc1_2_balance_last_stop)
     model.c2_zero_quantity_on_first_stop = Constraint(model.sVehicles, rule=fc2_zero_quantity_on_first_stop)
     model.c3_cap_max = Constraint(model.sVehicles, model.sStops, rule=fc3_cap_max)
     model.c4_load_req = Constraint(model.sCommodities, rule=fc4_load_req)

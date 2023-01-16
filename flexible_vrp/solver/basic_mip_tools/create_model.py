@@ -190,12 +190,9 @@ def create_model():
             sum(model.vAlpha[v, s2, w] for w in model.sWarehouses)
 
     def fc27_unload_after_load(model, v, s, origin, destination, quantity, compulsory):
-        return sum(model.vUnloadQuantity[v, s2, origin, destination, quantity, compulsory] for s2 in model.sStops if s2 <= s) <= \
-            sum(model.vLoadQuantity[v, s2, origin, destination, quantity, compulsory] for s2 in model.sStops if s2 < s)
-
-    # def fc27_unload_after_load(model, v, origin, destination, quantity, compulsory):
-    #     return sum(model.vUnloadQuantity[v, s, origin, destination, quantity, compulsory] for s in model.sStops) <= \
-    #         sum(model.vLoadQuantity[v, s, origin, destination, quantity, compulsory] for s in model.sStops)
+        return sum(model.vUnloadQuantity[v, s2, origin, destination, quantity, compulsory] for s2 in model.sStops
+                   if s2 <= s) <= sum(model.vLoadQuantity[v, s2, origin, destination, quantity, compulsory]
+                                      for s2 in model.sStops if s2 < s)
 
     # def fc28_quantity_lower_than_load(model, v, origin, destination, quantity, compulsory):
     #     return sum(model.vQuantity[v, s, origin, destination, quantity, compulsory] for s in model.sStops) <= \
@@ -243,8 +240,8 @@ def create_model():
     # model.c24_time_limit_3 = Constraint(model.sVehicles, model.sStops, rule=fc24_time_limit_3)
     model.c25_single_warehouse_per_stop = Constraint(model.sVehicles, model.sStops, rule=fc25_single_warehouse_per_stop)
     model.c26_consecutive_stops = Constraint(model.sVehicles, model.sStopsButLast, rule=fc26_consecutive_stops)
-    model.c27_unload_after_load = Constraint(model.sVehicles, model.sStopsButLast, model.sCommodities, rule=fc27_unload_after_load)
-    # model.c27_unload_after_load = Constraint(model.sVehicles, model.sCommodities, rule=fc27_unload_after_load)
+    model.c27_unload_after_load = Constraint(model.sVehicles, model.sStops, model.sCommodities,
+                                             rule=fc27_unload_after_load)
     # model.c28_quantity_lower_than_load = Constraint(model.sVehicles, model.sCommodities,
     #                                                 rule=fc28_quantity_lower_than_load)
     model.c29_alpha_value = Constraint(model.sVehicles, model.sStops, model.sWarehouses, rule=fc29_alpha_value)

@@ -40,7 +40,7 @@ def create_model():
     model.vGamma = Var(model.sVehicles, model.sStops, domain=Binary)
 
     # Continuous Variables
-    model.vQuantity = Var(model.sVehicles, model.sStops, model.sCommodities, domain=NonNegativeReals)
+    model.vQuantityAtArrival = Var(model.sVehicles, model.sStops, model.sCommodities, domain=NonNegativeReals)
     model.vLoadQuantity = Var(model.sVehicles, model.sStops, model.sCommodities, domain=NonNegativeReals)
     model.vUnloadQuantity = Var(model.sVehicles, model.sStops, model.sCommodities, domain=NonNegativeReals)
     model.vTotalNonCompulsory = Var(domain=NonNegativeReals)
@@ -55,22 +55,28 @@ def create_model():
     # Constraints
 
     def fc1_balance_commodities(model, v, s, origin, destination, quantity, compulsory):
-        s2 = s + 1
-        return model.vQuantity[v, s2, origin, destination, quantity, compulsory] == \
-            model.vQuantity[v, s, origin, destination, quantity, compulsory] \
-            - model.vUnloadQuantity[v, s, origin, destination, quantity, compulsory] \
-            + model.vLoadQuantity[v, s, origin, destination, quantity, compulsory]
+        if s == 0:
+            return model.vQuantityAtArrival[v, s + 1, origin, destination, quantity, compulsory] == \
+                   model.vLoadQuantity[v, s, origin, destination, quantity, compulsory]
+        elif s == len(model.sStops) - 1:
+            return model.vQuantityAtArrival[v, s, origin, destination, quantity, compulsory] == \
+                   model.vUnloadQuantity[v, s, origin, destination, quantity, compulsory]
+        else:
+            return model.vQuantityAtArrival[v, s + 1, origin, destination, quantity, compulsory] == \
+               model.vQuantityAtArrival[v, s, origin, destination, quantity, compulsory] \
+               - model.vUnloadQuantity[v, s, origin, destination, quantity, compulsory] \
+               + model.vLoadQuantity[v, s, origin, destination, quantity, compulsory]
 
     # def fc1_2_balance_last_stop(model, v, origin, destination, quantity, compulsory):
         # s = model.sStops[len(model.sStops) - 1]
-        # return model.vQuantity[v, s, origin, destination, quantity, compulsory] == \
+        # return model.vQuantityAtArrival[v, s, origin, destination, quantity, compulsory] == \
             # model.vUnloadQuantity[v, s, origin, destination, quantity, compulsory]
     def fc2_zero_quantity_on_first_stop(model, v):
         s = 0
-        return sum(model.vQuantity[v, s, c] for c in model.sCommodities) == 0
+        return sum(model.vQuantityAtArrival[v, s, c] for c in model.sCommodities) == 0
 
     def fc3_cap_max(model, v, s):
-        return sum(model.vQuantity[v, s, c] for c in model.sCommodities) <= model.pVehCAP
+        return sum(model.vQuantityAtArrival[v, s, c] for c in model.sCommodities) <= model.pVehCAP
 
     def fc4_load_req(model, origin, destination, quantity, compulsory):
         if compulsory == 1:
@@ -91,7 +97,6 @@ def create_model():
             return model.vUnloadQuantity[v, s, origin, destination, quantity, compulsory] <= \
                    quantity * model.vAlpha[v, s, w]
         else:
-            # return model.vUnloadQuantity[v, s, origin, destination, quantity, compulsory] == 0
             return Constraint.Skip
 
     def fc7_correct_load(model, v, s, w,  origin, destination, quantity, compulsory):
@@ -188,9 +193,9 @@ def create_model():
         return sum(model.vAlpha[v, s, w] for w in model.sWarehouses) <= 1
 
     def fc26_consecutive_stops(model, v, s):
-        s2 = s + 1
-        return sum(model.vAlpha[v, s, w] for w in model.sWarehouses) >= \
-            sum(model.vAlpha[v, s2, w] for w in model.sWarehouses)
+        return sum(model.vAlpha[v, s + 1 , w] for w in model.sWarehouses) <= \
+                sum(model.vAlpha[v, s, w] for w in model.sWarehouses)
+
 
     def fc27_unload_after_load(model, v, s, origin, destination, quantity, compulsory):
         return sum(model.vUnloadQuantity[v, s2, origin, destination, quantity, compulsory] for s2 in model.sStops
@@ -198,22 +203,22 @@ def create_model():
                                       for s2 in model.sStops if s2 < s)
 
     # def fc28_quantity_lower_than_load(model, v, origin, destination, quantity, compulsory):
-    #     return sum(model.vQuantity[v, s, origin, destination, quantity, compulsory] for s in model.sStops) <= \
+    #     return sum(model.vQuantityAtArrival[v, s, origin, destination, quantity, compulsory] for s in model.sStops) <= \
     #         sum(model.vLoadQuantity[v, s, origin, destination, quantity, compulsory] for s in model.sStops)
 
-    def fc29_alpha_value(model, v, s, w):
+    def fc29_alpha_zero_if_no_load_unload(model, v, s, w):
         return model.vAlpha[v, s, w] <= sum(model.vUnloadQuantity[v, s, c] +
-                                            model.vLoadQuantity[v, s, c]for c in model.sCommodities)
+                                            model.vLoadQuantity[v, s, c] for c in model.sCommodities)
 
     # Objective Function
     def f_obj_expression(model):
         return model.vTotalNonCompulsory
 
     # Activate constraints
-    model.c1_balance_commodities = Constraint(model.sVehicles, model.sStopsButLast, model.sCommodities,
+    model.c1_balance_commodities = Constraint(model.sVehicles, model.sStops, model.sCommodities,
                                               rule=fc1_balance_commodities)
     # model.c1_2_balance_last_stop = Constraint(model.sVehicles, model.sCommodities,rule=fc1_2_balance_last_stop)
-    model.c2_zero_quantity_on_first_stop = Constraint(model.sVehicles, rule=fc2_zero_quantity_on_first_stop)
+    # model.c2_zero_quantity_on_first_stop = Constraint(model.sVehicles, rule=fc2_zero_quantity_on_first_stop)
     model.c3_cap_max = Constraint(model.sVehicles, model.sStops, rule=fc3_cap_max)
     model.c4_load_req = Constraint(model.sCommodities, rule=fc4_load_req)
     model.c5_unload_req = Constraint(model.sCommodities, rule=fc5_unload_req)
@@ -222,7 +227,7 @@ def create_model():
     model.c7_correct_load = Constraint(model.sVehicles, model.sStops, model.sWarehouses, model.sCommodities,
                                        rule=fc7_correct_load)
     model.c7_2_max_load_total_comm = Constraint(model.sCommodities, rule=fc7_2_max_load_total_comm)
-    model.c8_zero_load_on_last_stop = Constraint(model.sVehicles, rule=fc8_zero_load_on_last_stop)
+    # model.c8_zero_load_on_last_stop = Constraint(model.sVehicles, rule=fc8_zero_load_on_last_stop)
     model.c9_zero_unload_on_first_stop = Constraint(model.sVehicles, rule=fc9_zero_unload_on_first_stop)
     model.c10_load_max_veh = Constraint(model.sVehicles, model.sStops, rule=fc10_load_max_veh)
     model.c11_unload_max_veh = Constraint(model.sVehicles, model.sStops, rule=fc11_unload_max_veh)
@@ -248,7 +253,8 @@ def create_model():
                                              rule=fc27_unload_after_load)
     # model.c28_quantity_lower_than_load = Constraint(model.sVehicles, model.sCommodities,
     #                                                 rule=fc28_quantity_lower_than_load)
-    model.c29_alpha_value = Constraint(model.sVehicles, model.sStops, model.sWarehouses, rule=fc29_alpha_value)
+    model.c29_alpha_zero_if_no_load_unload = Constraint(model.sVehicles, model.sStops, model.sWarehouses,
+                                                        rule=fc29_alpha_zero_if_no_load_unload)
 
     # Activate Objetive function
     model.obj_func = Objective(rule=f_obj_expression, sense=pyomo.core.maximize)

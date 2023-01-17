@@ -44,7 +44,7 @@ class BasicMip(Experiment):
             ]
         }
         # todo: estimate the number of stops for the current data. Remove from this method
-        self.instance.data["parameters"]["no_stops"] = 4
+        self.instance.data["parameters"]["no_stops"] = 5
         # Adding the set for Stops
         data["sStops"] = {
             None: [s for s in range(int(self.instance.data["parameters"]["no_stops"]))]
@@ -186,7 +186,7 @@ class BasicMip(Experiment):
 
     def get_solution(self, model_instance):
         data = [[v, s, w, c[0], c[1], c[2], c[3],
-                model_instance.vQuantity[v, s, c].value,
+                model_instance.vQuantityAtArrival[v, s, c].value,
                 model_instance.vLoadQuantity[v, s, c].value,
                 model_instance.vUnloadQuantity[v, s, c].value]
                 for v in model_instance.sVehicles
@@ -195,7 +195,7 @@ class BasicMip(Experiment):
                 for c in model_instance.sCommodities
                 if model_instance.vLoadQuantity[v, s, c].value +
                 model_instance.vUnloadQuantity[v, s, c].value +
-                model_instance.vQuantity[v, s, c].value
+                model_instance.vQuantityAtArrival[v, s, c].value
                 > 0
                 and model_instance.vAlpha[v, s, w].value == 1
                 ]

@@ -131,11 +131,11 @@ def create_model():
         else:
             return Constraint.Skip
 
-    def fc15_unload_time(model, v, s):
+    def fc15_unload_duration(model, v, s):
         return model.vUnloadDuration[v, s] == sum(model.vUnloadQuantity[v, s, c] for c in model.sCommodities) \
                * model.pUnloadTime
 
-    def fc16_load_time(model, v, s):
+    def fc16_load_duration(model, v, s):
         return model.vLoadDuration[v, s] == sum(model.vLoadQuantity[v, s, c] for c in model.sCommodities) \
                * model.pLoadTime
 
@@ -219,20 +219,20 @@ def create_model():
     model.c11_unload_max_veh = Constraint(model.sVehicles, model.sStops, rule=fc11_unload_max_veh)
     model.c12_total_non_compulsory = Constraint(rule=fc12_total_non_compulsory)
     model.c13_total_non_compulsory_bound = Constraint(rule=fc13_total_non_compulsory_bound)
-    # model.c14_trip_duration = Constraint(model.sVehicles, model.sStopsButLast, model.sWarehouses, model.sWarehouses,
-    #                                      rule=fc14_trip_duration)
-    # model.c15_unload_time = Constraint(model.sVehicles, model.sStops, rule=fc15_unload_time)
-    # model.c16_load_time = Constraint(model.sVehicles, model.sStops, rule=fc16_load_time)
-    # model.c17_departure_time = Constraint(model.sVehicles, model.sStops, rule=fc17_departure_time)
-    # model.c18_arrival_time = Constraint(model.sVehicles, model.sStopsButLast, rule=fc18_arrival_time)
-    # model.c19_unload_time = Constraint(model.sVehicles, model.sStops, rule=fc19_unload_time)
+    model.c14_trip_duration = Constraint(model.sVehicles, model.sStopsButLast, model.sWarehouses, model.sWarehouses,
+                                         rule=fc14_trip_duration)
+    model.c15_unload_time = Constraint(model.sVehicles, model.sStops, rule=fc15_unload_duration)
+    model.c16_load_time = Constraint(model.sVehicles, model.sStops, rule=fc16_load_duration)
+    model.c17_departure_time = Constraint(model.sVehicles, model.sStops, rule=fc17_departure_time)
+    model.c18_arrival_time = Constraint(model.sVehicles, model.sStopsButLast, rule=fc18_arrival_time)
+    model.c19_unload_time = Constraint(model.sVehicles, model.sStops, rule=fc19_unload_time)
     # model.c20_simultaneity_veh_1 = Constraint(model.sVehicles, model.sStops, model.sVehicles, model.sStops,
     #                                           model.sWarehouses, rule=fc20_simultaneity_veh_1)
-    # model.c21_simultaneity_veh_2 = Constraint(model.sVehicles, model.sStops, model.sVehicles, model.sStops,
-    #                                           rule=fc21_simultaneity_veh_2)
-    # model.c22_time_limit_1 = Constraint(model.sVehicles, model.sStops, rule=fc22_time_limit_1)
-    # model.c23_time_limit_2 = Constraint(model.sVehicles, model.sStops, model.sCommodities, rule=fc23_time_limit_2)
-    # model.c24_time_limit_3 = Constraint(model.sVehicles, model.sStops, rule=fc24_time_limit_3)
+    model.c21_simultaneity_veh_2 = Constraint(model.sVehicles, model.sStops, model.sVehicles, model.sStops,
+                                              rule=fc21_simultaneity_veh_2)
+    model.c22_time_limit_1 = Constraint(model.sVehicles, model.sStops, rule=fc22_time_limit_1)
+    model.c23_time_limit_2 = Constraint(model.sVehicles, model.sStops, model.sCommodities, rule=fc23_time_limit_2)
+    model.c24_time_limit_3 = Constraint(model.sVehicles, model.sStops, rule=fc24_time_limit_3)
     model.c25_single_warehouse_per_stop = Constraint(model.sVehicles, model.sStops, rule=fc25_single_warehouse_per_stop)
     model.c26_consecutive_stops = Constraint(model.sVehicles, model.sStopsButLast, rule=fc26_consecutive_stops)
     model.c27_unload_after_load = Constraint(model.sVehicles, model.sStops, model.sCommodities,

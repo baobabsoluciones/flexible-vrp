@@ -41,7 +41,7 @@ def create_model():
 
     # Continuous Variables
     model.vQuantityAtArrival = Var(model.sVehicles, model.sStops, model.sCommodities, domain=NonNegativeReals)
-    model.vLoadQuantity = Var(model.sVehicles, model.sStops, model.sCommodities, domain=NonNegativeReals)
+    model.vLoadQuantity = Var(model.sVehicles, model.sStops, model.sCommodities, domain=Integers)
     model.vUnloadQuantity = Var(model.sVehicles, model.sStops, model.sCommodities, domain=NonNegativeReals)
     model.vTotalNonCompulsory = Var(domain=NonNegativeReals)
     model.vTripDuration = Var(model.sTripDuration, domain=NonNegativeReals)
@@ -198,6 +198,10 @@ def create_model():
         return model.vAlpha[v, s, w] <= sum(model.vUnloadQuantity[v, s, c] +
                                             model.vLoadQuantity[v, s, c] for c in model.sCommodities)
 
+    # Consecutive stops do not share warehouse
+    def fc30_consecutive_stops_diff_warehouse(model, v, s, w):
+        return model.vAlpha[v, s + 1, w] <= 1 - model.vAlpha[v, s, w]
+
     # Objective Function
     def f_obj_expression(model):
         return model.vTotalNonCompulsory
@@ -228,8 +232,8 @@ def create_model():
     model.c19_unload_time = Constraint(model.sVehicles, model.sStops, rule=fc19_unload_time)
     # model.c20_simultaneity_veh_1 = Constraint(model.sVehicles, model.sStops, model.sVehicles, model.sStops,
     #                                           model.sWarehouses, rule=fc20_simultaneity_veh_1)
-    model.c21_simultaneity_veh_2 = Constraint(model.sVehicles, model.sStops, model.sVehicles, model.sStops,
-                                              rule=fc21_simultaneity_veh_2)
+    # model.c21_simultaneity_veh_2 = Constraint(model.sVehicles, model.sStops, model.sVehicles, model.sStops,
+    #                                           rule=fc21_simultaneity_veh_2)
     model.c22_time_limit_1 = Constraint(model.sVehicles, model.sStops, rule=fc22_time_limit_1)
     model.c23_time_limit_2 = Constraint(model.sVehicles, model.sStops, model.sCommodities, rule=fc23_time_limit_2)
     model.c24_time_limit_3 = Constraint(model.sVehicles, model.sStops, rule=fc24_time_limit_3)
@@ -242,6 +246,8 @@ def create_model():
     model.c29_alpha_zero_if_no_load_unload = Constraint(model.sVehicles, model.sStops, model.sWarehouses,
                                                         rule=fc29_alpha_zero_if_no_load_unload)
 
+    model.c30_consecutive_stops_diff_warehouse = Constraint(model.sVehicles, model.sStopsButLast, model.sWarehouses,
+                                                            rule=fc30_consecutive_stops_diff_warehouse)
     # Activate Objetive function
     model.obj_func = Objective(rule=f_obj_expression, sense=pyomo.core.maximize)
     return model

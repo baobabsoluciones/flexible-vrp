@@ -205,12 +205,25 @@ class BasicMip(Experiment):
                                          "Comm (comp.)"])["Qty (arr)"].shift(-1)
         df["Qty (dep)"].fillna(0, inplace=True)
 
-        data = [[v, s, w]
+        warehouses_visited = {(v, s): w for v in model_instance.sVehicles for s in model_instance.sStops for
+                              w in model_instance.sWarehouses if model_instance.vAlpha[v, s, w].value == 1}
+
+        trip_durations = {(v, s): model_instance.pTripDuration[warehouses_visited[v,s], warehouses_visited[v, s + 1]].value for
+                          v in model_instance.sVehicles for s in model_instance.sStopsButLast}
+        for v in model_instance.sVehicles:
+            trip_durations[v, len(model_instance.sStops) - 1] = "-"
+
+        data = [[v, s, w, model_instance.vArrivalTime[v, s].value,
+                 model_instance.vUnloadDuration[v, s].value,
+                 model_instance.vLoadDuration[v, s].value,
+                 model_instance.vDepartureTime[v, s].value,
+                 trip_durations[v,s]]
                 for v in model_instance.sVehicles
                 for s in model_instance.sStops
                 for w in model_instance.sWarehouses
                 if model_instance.vAlpha[v, s, w].value == 1
                 ]
-        df_alpha = pd.DataFrame(data, columns=["Vehicle", "Stop", "Warehouse"])
+        df_times = pd.DataFrame(data, columns=["Vehicle", "Stop", "Warehouse", "Arr. time", "Unload dur.", "Load dur.",
+                                               "Dep. time", "Trip dur."])
 
-        return df, df_alpha
+        return df, df_times

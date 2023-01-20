@@ -214,8 +214,8 @@ class BasicMip(Experiment):
             trip_durations[v, len(model_instance.sStops) - 1] = "-"
 
         data = [[v, s, w, model_instance.vArrivalTime[v, s].value,
-                 model_instance.vUnloadDuration[v, s].value,
                  model_instance.vLoadDuration[v, s].value,
+                 model_instance.vUnloadDuration[v, s].value,
                  model_instance.vDepartureTime[v, s].value,
                  trip_durations[v,s]]
                 for v in model_instance.sVehicles
@@ -223,7 +223,7 @@ class BasicMip(Experiment):
                 for w in model_instance.sWarehouses
                 if model_instance.vAlpha[v, s, w].value == 1
                 ]
-        df_times = pd.DataFrame(data, columns=["Vehicle", "Stop", "Warehouse", "Arr. time", "Unload dur.", "Load dur.",
+        df_times = pd.DataFrame(data, columns=["Vehicle", "Stop", "Warehouse", "Arr. time", "Load dur.", "Unload dur.",
                                                "Dep. time", "Trip dur."])
 
         return df, df_times

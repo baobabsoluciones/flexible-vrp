@@ -159,7 +159,7 @@ def create_model():
 
     def fc20_simultaneity_veh_2(model, v, s, v2, s2):
         if v != v2:
-            return model.vArrivalTime[v, s] >= model.vDepartureTime[v, s] - (1-model.vBeta1[v, s, v2, s2]) \
+            return model.vArrivalTime[v2, s2] >= model.vDepartureTime[v, s] - (1-model.vBeta1[v, s, v2, s2]) \
                    * model.pBigM2
         else:
             return Constraint.Skip

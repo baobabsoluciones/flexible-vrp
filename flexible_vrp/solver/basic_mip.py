@@ -208,9 +208,6 @@ class BasicMip(Experiment):
         warehouses_visited = {(v, s): w for v in model_instance.sVehicles for s in model_instance.sStops for
                               w in model_instance.sWarehouses if model_instance.vAlpha[v, s, w].value == 1}
 
-        trip_durations = {(v, s): model_instance.pTripDuration[warehouses_visited[v,s], warehouses_visited[v, s + 1]].value for
-                          v in model_instance.sVehicles for s in model_instance.sStopsButLast
-                          if (v, s) in warehouses_visited.keys() and (v, s + 1) in warehouses_visited.keys()}
 
         trip_durations = {
             (v, s): (model_instance.pTripDuration[warehouses_visited[v, s], warehouses_visited[v, s + 1]].value if

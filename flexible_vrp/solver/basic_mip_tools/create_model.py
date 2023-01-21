@@ -35,8 +35,7 @@ def create_model():
 
     # Binary Variables
     model.vAlpha = Var(model.sVehicles, model.sStops, model.sWarehouses, domain=Binary)
-    model.vBeta1 = Var(model.sVehicles, model.sStops, model.sVehicles, model.sStops, domain=Binary)
-    model.vBeta2 = Var(model.sVehicles, model.sStops, model.sVehicles, model.sStops, domain=Binary)
+    model.vBeta = Var(model.sVehicles, model.sStops, model.sVehicles, model.sStops, domain=Binary)
     model.vGamma = Var(model.sVehicles, model.sStops, domain=Binary)
 
     # Continuous Variables
@@ -125,9 +124,8 @@ def create_model():
 
     def fc14_trip_duration(model, v, s, w, w2):
         if w != w2:
-            s2 = s + 1
-            return model.vTripDuration[v, s, s2] >= model.pTripDuration[w, w2] \
-                - model.pBigM1 * (2 - model.vAlpha[v, s, w] - model.vAlpha[v, s2, w2])
+            return model.vTripDuration[v, s, s + 1] >= model.pTripDuration[w, w2] \
+                - model.pBigM1 * (2 - model.vAlpha[v, s, w] - model.vAlpha[v, s + 1, w2])
         else:
             return Constraint.Skip
 
@@ -144,22 +142,21 @@ def create_model():
                + model.vUnloadDuration[v, s]
 
     def fc18_arrival_time(model, v, s):
-        s2 = s + 1
-        return model.vArrivalTime[v, s2] == model.vDepartureTime[v, s] + model.vTripDuration[v, s, s2]
+        return model.vArrivalTime[v, s + 1] == model.vDepartureTime[v, s] + model.vTripDuration[v, s, s + 1]
 
     def fc19_unload_time(model, v, s):
         return model.vUnloadTime[v, s] == model.vArrivalTime[v, s] + model.vUnloadDuration[v, s]
 
     def fc20_simultaneity_veh_1(model, v, s, v2, s2, w):
         if v != v2:
-            return model.vBeta1[v, s, v2, s2] + model.vBeta2[v2, s2, v, s] >= model.vAlpha[v, s, w] \
+            return model.vBeta[v, s, v2, s2] + model.vBeta[v2, s2, v, s] >= model.vAlpha[v, s, w] \
                    + model.vAlpha[v2, s2, w] - 1
         else:
             return Constraint.Skip
 
     def fc21_simultaneity_veh_2(model, v, s, v2, s2):
         if v != v2:
-            return model.vArrivalTime[v, s] >= model.vDepartureTime[v, s] - (1-model.vBeta1[v, s, v2, s2]) \
+            return model.vArrivalTime[v2, s2] >= model.vDepartureTime[v, s] - (1 - model.vBeta[v, s, v2, s2]) \
                    * model.pBigM2
         else:
             return Constraint.Skip
@@ -168,7 +165,7 @@ def create_model():
         return model.vUnloadTime[v, s] <= model.pReqTimeLimit + model.vGamma[v, s] * model.pBigM3
 
     def fc23_time_limit_2(model, v, s, origin, destination, quantity, compulsory):
-        if model.sCommodities[3] == 1:
+        if compulsory == 1:
             return model.vLoadQuantity[v, s, origin, destination, quantity, compulsory] <= (1-model.vGamma[v, s]) \
                    * model.pVehCAP
         else:
@@ -190,7 +187,7 @@ def create_model():
                    if s2 <= s) <= sum(model.vLoadQuantity[v, s2, origin, destination, quantity, compulsory]
                                       for s2 in model.sStops if s2 < s)
 
-    # def fc28_quantity_lower_than_load(model, v, origin, destination, quantity, compulsory):
+    # def fc28_quantity_lower_than_load(modesl, v, origin, destination, quantity, compulsory):
     #     return sum(model.vQuantityAtArrival[v, s, origin, destination, quantity, compulsory] for s in model.sStops) <= \
     #         sum(model.vLoadQuantity[v, s, origin, destination, quantity, compulsory] for s in model.sStops)
 
@@ -230,10 +227,10 @@ def create_model():
     model.c17_departure_time = Constraint(model.sVehicles, model.sStops, rule=fc17_departure_time)
     model.c18_arrival_time = Constraint(model.sVehicles, model.sStopsButLast, rule=fc18_arrival_time)
     model.c19_unload_time = Constraint(model.sVehicles, model.sStops, rule=fc19_unload_time)
-    # model.c20_simultaneity_veh_1 = Constraint(model.sVehicles, model.sStops, model.sVehicles, model.sStops,
-    #                                           model.sWarehouses, rule=fc20_simultaneity_veh_1)
-    # model.c21_simultaneity_veh_2 = Constraint(model.sVehicles, model.sStops, model.sVehicles, model.sStops,
-    #                                           rule=fc21_simultaneity_veh_2)
+    model.c20_simultaneity_veh_1 = Constraint(model.sVehicles, model.sStops, model.sVehicles, model.sStops,
+                                              model.sWarehouses, rule=fc20_simultaneity_veh_1)
+    model.c21_simultaneity_veh_2 = Constraint(model.sVehicles, model.sStops, model.sVehicles, model.sStops,
+                                              rule=fc21_simultaneity_veh_2)
     model.c22_time_limit_1 = Constraint(model.sVehicles, model.sStops, rule=fc22_time_limit_1)
     model.c23_time_limit_2 = Constraint(model.sVehicles, model.sStops, model.sCommodities, rule=fc23_time_limit_2)
     model.c24_time_limit_3 = Constraint(model.sVehicles, model.sStops, rule=fc24_time_limit_3)

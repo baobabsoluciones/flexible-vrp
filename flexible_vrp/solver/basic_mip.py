@@ -87,9 +87,9 @@ class BasicMip(Experiment):
 
         # Adding the parameters BigM
 
-        data["bigM1"] = max(data["pTripDuration"])
-        data["bigM2"] = data["pOptTimeLimit"]
-        data["bigM3"] = data["pOptTimeLimit"][None] - data["pReqTimeLimit"][None]
+        data["pBigM1"] = {None: max(data["pTripDuration"].values())}
+        data["pBigM2"] = data["pOptTimeLimit"]
+        data["pBigM3"] = {None: data["pOptTimeLimit"][None] - data["pReqTimeLimit"][None]}
 
         return {None: data}
 
@@ -209,7 +209,16 @@ class BasicMip(Experiment):
                               w in model_instance.sWarehouses if model_instance.vAlpha[v, s, w].value == 1}
 
         trip_durations = {(v, s): model_instance.pTripDuration[warehouses_visited[v,s], warehouses_visited[v, s + 1]].value for
-                          v in model_instance.sVehicles for s in model_instance.sStopsButLast}
+                          v in model_instance.sVehicles for s in model_instance.sStopsButLast
+                          if (v, s) in warehouses_visited.keys() and (v, s + 1) in warehouses_visited.keys()}
+
+        trip_durations = {
+            (v, s): (model_instance.pTripDuration[warehouses_visited[v, s], warehouses_visited[v, s + 1]].value if
+                     (v, s + 1) in warehouses_visited.keys() else 0) for
+            v in model_instance.sVehicles for s in model_instance.sStopsButLast
+            if (v, s) in warehouses_visited.keys()}
+
+
         for v in model_instance.sVehicles:
             trip_durations[v, len(model_instance.sStops) - 1] = "-"
 

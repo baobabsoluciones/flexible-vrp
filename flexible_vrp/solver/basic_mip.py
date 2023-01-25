@@ -44,7 +44,7 @@ class BasicMip(Experiment):
             ]
         }
         # todo: estimate the number of stops for the current data. Remove from this method
-        self.instance.data["parameters"]["no_stops"] = 15
+        self.instance.data["parameters"]["no_stops"] = 5
         # Adding the set for Stops
         data["sStops"] = {
             None: [s for s in range(int(self.instance.data["parameters"]["no_stops"]))]

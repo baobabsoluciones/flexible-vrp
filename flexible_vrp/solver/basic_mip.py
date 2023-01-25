@@ -44,7 +44,7 @@ class BasicMip(Experiment):
             ]
         }
         # todo: estimate the number of stops for the current data. Remove from this method
-        self.instance.data["parameters"]["no_stops"] = 5
+        self.instance.data["parameters"]["no_stops"] = 15
         # Adding the set for Stops
         data["sStops"] = {
             None: [s for s in range(int(self.instance.data["parameters"]["no_stops"]))]
@@ -208,28 +208,26 @@ class BasicMip(Experiment):
         warehouses_visited = {(v, s): w for v in model_instance.sVehicles for s in model_instance.sStops for
                               w in model_instance.sWarehouses if model_instance.vAlpha[v, s, w].value == 1}
 
-
         trip_durations = {
             (v, s): (model_instance.pTripDuration[warehouses_visited[v, s], warehouses_visited[v, s + 1]].value if
                      (v, s + 1) in warehouses_visited.keys() else 0) for
             v in model_instance.sVehicles for s in model_instance.sStopsButLast
             if (v, s) in warehouses_visited.keys()}
 
-
         for v in model_instance.sVehicles:
             trip_durations[v, len(model_instance.sStops) - 1] = "-"
 
         data = [[v, s, w, model_instance.vArrivalTime[v, s].value,
-                 model_instance.vUnloadDuration[v, s].value,
                  model_instance.vLoadDuration[v, s].value,
+                 model_instance.vUnloadDuration[v, s].value,
                  model_instance.vDepartureTime[v, s].value,
-                 trip_durations[v,s]]
+                 trip_durations[v, s]]
                 for v in model_instance.sVehicles
                 for s in model_instance.sStops
                 for w in model_instance.sWarehouses
                 if model_instance.vAlpha[v, s, w].value == 1
                 ]
-        df_times = pd.DataFrame(data, columns=["Vehicle", "Stop", "Warehouse", "Arr. time", "Unload dur.", "Load dur.",
+        df_times = pd.DataFrame(data, columns=["Vehicle", "Stop", "Warehouse", "Arr. time", "Load dur.", "Unload dur.",
                                                "Dep. time", "Trip dur."])
 
         return df, df_times

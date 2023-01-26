@@ -14,13 +14,6 @@ class BasicMip(Experiment):
     def prepare_model_data(self):
         # data is the dict that is filled in and returned
         # Calculating MILP parameters and sets
-        """
-        # Estimating bigMs
-        # Todo: estimate values as a function of instance parameters
-        bigM1 = max (data['pTripDuration'])
-        bigM2 = data['pOptTimeLimit']
-        bigM3 = (data['pOptTimeLimit'] - data['pReqTimeLimit'])
-        """
         # Generating the dictionary for Pyomo
 
         data = dict()
@@ -44,7 +37,7 @@ class BasicMip(Experiment):
             ]
         }
         # todo: estimate the number of stops for the current data. Remove from this method
-        self.instance.data["parameters"]["no_stops"] = 5
+        self.instance.data["parameters"]["no_stops"] = 20
         # Adding the set for Stops
         data["sStops"] = {
             None: [s for s in range(int(self.instance.data["parameters"]["no_stops"]))]
@@ -221,13 +214,13 @@ class BasicMip(Experiment):
                  model_instance.vLoadDuration[v, s].value,
                  model_instance.vUnloadDuration[v, s].value,
                  model_instance.vDepartureTime[v, s].value,
-                 trip_durations[v, s]]
+                 trip_durations[v, s],
+                 model_instance.vGamma[v, s].value]
                 for v in model_instance.sVehicles
                 for s in model_instance.sStops
                 for w in model_instance.sWarehouses
                 if model_instance.vAlpha[v, s, w].value == 1
                 ]
         df_times = pd.DataFrame(data, columns=["Vehicle", "Stop", "Warehouse", "Arr. time", "Load dur.", "Unload dur.",
-                                               "Dep. time", "Trip dur."])
-
+                                               "Dep. time", "Trip dur.", "Gamma"])
         return df, df_times

@@ -231,8 +231,8 @@ def create_model():
                                                             rule=fc17_consecutive_stops_diff_warehouse)
     model.c18_trip_duration = Constraint(model.sVehicles, model.sStopsButLast, model.sWarehouses, model.sWarehouses,
                                          rule=fc18_trip_duration)
-    model.c19_load_time = Constraint(model.sVehicles, model.sStops, rule=fc19_load_duration)
-    model.c20_unload_time = Constraint(model.sVehicles, model.sStops, rule=fc20_unload_duration)
+    model.c19_load_duration = Constraint(model.sVehicles, model.sStops, rule=fc19_load_duration)
+    model.c20_unload_duration = Constraint(model.sVehicles, model.sStops, rule=fc20_unload_duration)
     model.c21_arrival_time = Constraint(model.sVehicles, model.sStopsButLast, rule=fc21_arrival_time)
     model.c22_departure_time = Constraint(model.sVehicles, model.sStops, rule=fc22_departure_time)
     model.c23_unload_time = Constraint(model.sVehicles, model.sStops, rule=fc23_unload_time)
@@ -240,10 +240,11 @@ def create_model():
                                               model.sWarehouses, rule=fc24_simultaneity_veh_1)
     model.c25_simultaneity_veh_2 = Constraint(model.sVehicles, model.sStops, model.sVehicles, model.sStops,
                                               rule=fc25_simultaneity_veh_2)
-    model.c26_time_limit_4 = Constraint(model.sVehicles, model.sStops, rule=fc26_optional_time_limit)
-    model.c27_time_limit_1 = Constraint(model.sVehicles, model.sStops, rule=fc27_required_time_limit)
-    model.c28_time_limit_2 = Constraint(model.sVehicles, model.sStops, model.sCommodities, rule=fc28_load_time_limit)
-    model.c29_time_limit_3 = Constraint(model.sVehicles, model.sStops, model.sCommodities, rule=fc29_unload_time_limit)
+    model.c26_optional_time_limit = Constraint(model.sVehicles, model.sStops, rule=fc26_optional_time_limit)
+    model.c27_required_time_limit = Constraint(model.sVehicles, model.sStops, rule=fc27_required_time_limit)
+    model.c28_load_time_limit = Constraint(model.sVehicles, model.sStops, model.sCommodities, rule=fc28_load_time_limit)
+    model.c29_unload_time_limit = Constraint(model.sVehicles, model.sStops, model.sCommodities, 
+                                             rule=fc29_unload_time_limit)
 
     # Activate Objetive function
     model.obj_func = Objective(rule=f_obj_expression, sense=pyomo.core.maximize)

@@ -223,4 +223,7 @@ class BasicMip(Experiment):
                 ]
         df_times = pd.DataFrame(data, columns=["Vehicle", "Stop", "Warehouse", "Arr. time", "Load dur.", "Unload dur.",
                                                "Dep. time", "Trip dur.", "Gamma"])
-        return df, df_times
+
+        json_df = df.to_dict("records")
+        json_df_times = df_times.to_dict("records")
+        return json_df, json_df_times

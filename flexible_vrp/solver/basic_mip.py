@@ -5,6 +5,7 @@ from flexible_vrp.core import Experiment, Solution
 from flexible_vrp.solver.basic_mip_tools.create_model import create_model
 from pyomo.environ import SolverFactory
 from cornflow_client.constants import PYOMO_STOP_MAPPING
+from pytups import TupList
 
 
 class BasicMip(Experiment):
@@ -111,7 +112,7 @@ class BasicMip(Experiment):
         data_json = self.get_solution(model_instance)
         self.solution = Solution({"data": data_json})
 
-        # Priniting the value of the OF
+        # Printing the value of the OF
         obj = model_instance.f_obj()
         print("Status: {} Objective value: {}".format(status, obj))
 
@@ -125,8 +126,6 @@ class BasicMip(Experiment):
         #     self.variables_to_excel(model_result)
 
         return 1  # dict(status=STATUS_TIME_LIMIT, status_sol=SOLUTION_STATUS_FEASIBLE)
-
-
         return {}
 
     def set_solver(self, options):
@@ -143,83 +142,41 @@ class BasicMip(Experiment):
         return opt
 
     def get_solution(self, model_instance):
-        from pytups import TupList
-        # TODO: incluir tiempos en este dictlist
-        data = TupList([[v, s, w, c[0], c[1], c[2], c[3],
-                model_instance.vQuantityAtArrival[v, s, c].value,
-                model_instance.vLoadQuantity[v, s, c].value,
-                model_instance.vUnloadQuantity[v, s, c].value]
-                for v in model_instance.sVehicles
-                for s in model_instance.sStops
-                for w in model_instance.sWarehouses
-                for c in model_instance.sCommodities
-                if model_instance.vLoadQuantity[v, s, c].value +
-                model_instance.vUnloadQuantity[v, s, c].value +
-                model_instance.vQuantityAtArrival[v, s, c].value
-                > 0
-                and model_instance.vAlpha[v, s, w].value == 1
-                # TODO: rename columns
-                ]).to_dictlist(["Vehicle", "Stop", "Warehouse", "comm_or", "comm_dest", "comm_qty)",
-                                         "Comm (comp.)", "Qty (arr)", "Load", "Unload"])
-        return data
+        warehouses_visited = {(v, s): w for v in model_instance.sVehicles for s in model_instance.sStops for
+                              w in model_instance.sWarehouses if model_instance.vAlpha[v, s, w].value == 1}
 
-        # data = [[v, s, w, c[0], c[1], c[2], c[3],
-        #         model_instance.vQuantityAtArrival[v, s, c].value,
-        #         model_instance.vLoadQuantity[v, s, c].value,
-        #         model_instance.vUnloadQuantity[v, s, c].value]
-        #         for v in model_instance.sVehicles
-        #         for s in model_instance.sStops
-        #         for w in model_instance.sWarehouses
-        #         for c in model_instance.sCommodities
-        #         if model_instance.vLoadQuantity[v, s, c].value +
-        #         model_instance.vUnloadQuantity[v, s, c].value +
-        #         model_instance.vQuantityAtArrival[v, s, c].value
-        #         > 0
-        #         and model_instance.vAlpha[v, s, w].value == 1
-        #         ]
-        # df = pd.DataFrame(data, columns=["Vehicle", "Stop", "Warehouse", "Comm (or.)", "Comm (dest.)", "Comm (qty)",
-        #                                  "Comm (comp.)", "Qty (arr)", "Load", "Unload"])
-        # df["Qty (dep)"] = df.groupby(by=["Vehicle", "Comm (or.)", "Comm (dest.)", "Comm (qty)",
-        #                                  "Comm (comp.)"])["Qty (arr)"].shift(-1)
-        # df["Qty (dep)"].fillna(0, inplace=True)
-        #
-        # warehouses_visited = {(v, s): w for v in model_instance.sVehicles for s in model_instance.sStops for
-        #                       w in model_instance.sWarehouses if model_instance.vAlpha[v, s, w].value == 1}
-        #
-        # trip_durations = {
-        #     (v, s): (model_instance.pTripDuration[warehouses_visited[v, s], warehouses_visited[v, s + 1]].value if
-        #              (v, s + 1) in warehouses_visited.keys() else 0) for
-        #     v in model_instance.sVehicles for s in model_instance.sStopsButLast
-        #     if (v, s) in warehouses_visited.keys()}
-        #
-        # for v in model_instance.sVehicles:
-        #     trip_durations[v, len(model_instance.sStops) - 1] = "-"
-        #
-        # data = [[v, s, w, model_instance.vArrivalTime[v, s].value,
-        #          model_instance.vLoadDuration[v, s].value,
-        #          model_instance.vUnloadDuration[v, s].value,
-        #          model_instance.vDepartureTime[v, s].value,
-        #          trip_durations[v, s],
-        #          model_instance.vGamma[v, s].value]
-        #         for v in model_instance.sVehicles
-        #         for s in model_instance.sStops
-        #         for w in model_instance.sWarehouses
-        #         if model_instance.vAlpha[v, s, w].value == 1
-        #         ]
-        #
-        # df_times = pd.DataFrame(data, columns=["Vehicle", "Stop", "Warehouse", "Arr. time", "Load dur.", "Unload dur.",
-        #                                        "Dep. time", "Trip dur.", "Gamma"])
-        # # quantity_optional_pallets = \
-        # #     for c in model_instance.sCommodities
-        # #         n = 0
-        # #         if c[3]== 0
-        # #             n = n + c[2]
-        #
-        # json_df = df.to_dict("records")
-        # json_df_times = df_times.to_dict("records")
-        # return json_df, json_df_times
+        trip_durations = {
+            (v, s): (model_instance.pTripDuration[warehouses_visited[v, s], warehouses_visited[v, s + 1]].value if
+                     (v, s + 1) in warehouses_visited.keys() else 0) for
+            v in model_instance.sVehicles for s in model_instance.sStopsButLast
+            if (v, s) in warehouses_visited.keys()}
 
+        for v in model_instance.sVehicles:
+            trip_durations[v, len(model_instance.sStops) - 1] = "-"
 
+        data_solution = TupList([[v, s, w, c[0], c[1], c[2], c[3],
+                                  model_instance.vQuantityAtArrival[v, s, c].value,
+                                  model_instance.vLoadQuantity[v, s, c].value,
+                                  model_instance.vUnloadQuantity[v, s, c].value,
+                                  model_instance.vArrivalTime[v, s].value,
+                                  model_instance.vLoadDuration[v, s].value,
+                                  model_instance.vUnloadDuration[v, s].value,
+                                  model_instance.vDepartureTime[v, s].value,
+                                  trip_durations[v, s],
+                                  model_instance.vGamma[v, s].value]
+                                 for v in model_instance.sVehicles
+                                 for s in model_instance.sStops
+                                 for w in model_instance.sWarehouses
+                                 for c in model_instance.sCommodities
+                                 if model_instance.vLoadQuantity[v, s, c].value +
+                                 model_instance.vUnloadQuantity[v, s, c].value +
+                                 model_instance.vQuantityAtArrival[v, s, c].value
+                                 > 0
+                                 and model_instance.vAlpha[v, s, w].value == 1
+                                 ]).to_dictlist(["vehicle", "stop", "warehouse", "comm_or", "comm_dest", "comm_qty",
+                                                 "comm_comp", "qty_arr", "load", "unload", "arr_time", "load_dur",
+                                                 "unload_dur", "dep_time", "trip_dur", "gamma"])
+        return data_solution
 
         # Example of solve method:
         #

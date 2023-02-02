@@ -37,22 +37,31 @@ class Experiment(ExperimentCore):
         # Todo: create a method to recalculate the objective function.
         return 0
 
+    def check_required_pallets(self):
+        quantity = TupList(v["n1"] for v in self.instance.data["sCommodities"]).to_set()
+        return [{"quantity": n} for n in quantity]
+
+    # check compulsory pallets
+    # if compulsory==1:
+    #     number_req_com = sum(model_instance.vUnloadQuantity[v, s, origin, destination, quantity, compulsory]
+    #                    for v in model_instance.sVehicles for s in model_instance.sStops)
+    # check optional pallets
+    # if compulsory==0:
+    #     number_opt_com = sum(model_instance.vUnloadQuantity[v, s, origin, destination, quantity, compulsory]
+    #                    for v in model_instance.sVehicles for s in model_instance.sStops)
+    # check simultaneity
+    # ls=[(v, v2, w) for v in model_instance.sVehicles for v2 in model_instance.sVehicles for w in model_instance.sWarehouses if v != v2 and |v va a w|
+    #  if ln(ls)=0 |v2 va a w| y |solapan|]
+
     def check_solution(self, *args, **kwargs) -> dict:
         # Todo: create a method to check the solution.
-        # check compulsory pallets
-        if compulsory==1:
-            number_req_com = sum(model_instance.vUnloadQuantity[v, s, origin, destination, quantity, compulsory]
-                           for v in model_instance.sVehicles for s in model_instance.sStops)
-        # check optional pallets
-        if compulsory==0:
-            number_opt_com = sum(model_instance.vUnloadQuantity[v, s, origin, destination, quantity, compulsory]
-                           for v in model_instance.sVehicles for s in model_instance.sStops)
-        # check req_com_time_limit
+        return dict(
+            missing_required_pallets = self.check_required_pallets(),
+            # correct_Hr =
+            # correct_Ho =
+            # no_simultaneity =
 
-        # check simultaneity
-        # ls=[(v, v2, w) for v in model_instance.sVehicles for v2 in model_instance.sVehicles for w in model_instance.sWarehouses if v != v2 and |v va a w|
-        #  if ln(ls)=0 |v2 va a w| y |solapan|]
-        return {}
+        )
 
     def solve(self, options):
         raise NotImplementedError

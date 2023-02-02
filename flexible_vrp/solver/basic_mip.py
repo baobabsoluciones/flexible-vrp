@@ -223,6 +223,11 @@ class BasicMip(Experiment):
                 ]
         df_times = pd.DataFrame(data, columns=["Vehicle", "Stop", "Warehouse", "Arr. time", "Load dur.", "Unload dur.",
                                                "Dep. time", "Trip dur.", "Gamma"])
+        quantity_optional_pallets = \
+            for c in model_instance.sCommodities
+                n = 0
+                if c[3]== 0
+                    n = n + c[2]
 
         json_df = df.to_dict("records")
         json_df_times = df_times.to_dict("records")

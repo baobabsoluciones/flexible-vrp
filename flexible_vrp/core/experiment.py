@@ -37,7 +37,7 @@ class Experiment(ExperimentCore):
         # Todo: create a method to recalculate the objective function.
         return 0
 
-    def check_required_pallets(self):
+    def check_required_pallets(self, data):
         quantity = TupList(v["n1"] for v in self.instance.data["sCommodities"]).to_set()
         return [{"quantity": n} for n in quantity]
 
@@ -55,12 +55,12 @@ class Experiment(ExperimentCore):
 
     def check_solution(self, *args, **kwargs) -> dict:
         # Todo: create a method to check the solution.
+        data = self.solution.to_dict()['data']
         return dict(
-            missing_required_pallets = self.check_required_pallets(),
+            missing_required_pallets = self.check_required_pallets(data),
             # correct_Hr =
             # correct_Ho =
             # no_simultaneity =
-
         )
 
     def solve(self, options):

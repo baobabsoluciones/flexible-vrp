@@ -161,6 +161,7 @@ class BasicMip(Experiment):
                                   model_instance.vArrivalTime[v, s].value,
                                   model_instance.vLoadDuration[v, s].value,
                                   model_instance.vUnloadDuration[v, s].value,
+                                  model_instance.vUnloadTime[v, s].value,
                                   model_instance.vDepartureTime[v, s].value,
                                   trip_durations[v, s],
                                   model_instance.vGamma[v, s].value]
@@ -175,7 +176,7 @@ class BasicMip(Experiment):
                                  and model_instance.vAlpha[v, s, w].value == 1
                                  ]).to_dictlist(["vehicle", "stop", "warehouse", "comm_or", "comm_dest", "comm_qty",
                                                  "comm_comp", "qty_arr", "load", "unload", "arr_time", "load_dur",
-                                                 "unload_dur", "dep_time", "trip_dur", "gamma"])
+                                                 "unload_dur", "unload_time", "dep_time", "trip_dur", "gamma"])
         return data_solution
 
         # Example of solve method:

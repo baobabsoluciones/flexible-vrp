@@ -39,28 +39,45 @@ class Experiment(ExperimentCore):
         return 0
 
     def check_required_pallets(self, data):
-        #unload = TupList(data)
-        #print(data)
-        actual_unload = TupList(data).to_dict(indices=["comm_or", "comm_dest", "comm_comp"], result_col="unload").vapply(sum)
+        actual_unload = TupList(data).\
+            to_dict(indices=["comm_or", "comm_dest", "comm_comp"], result_col="unload").vapply(sum)
         expected_unload = TupList(self.instance.to_dict()['commodities'])\
             .to_dict(indices=["origin", "destination", "required"], result_col="quantity", is_list=False)
+        return
 
-        #unload = TupList(v[""] for v in self.instance.data["unload"]).to_set()
-        return [{"unload": n} for n in unload]
+    def check_correct_hr(self, data):
+        actual_time_unload = TupList(data).\
+            to_dict(indices=["comm_or", "comm_dest", "comm_comp"], result_col="unload_time")
+        expected_time_unload_req = TupList(self.instance.to_dict()['parameters']).\
+            to_dict(indices=["req_time_limit"], is_list=False)
+        return
+
+    def check_correct_ho(self, data):
+        actual_time_unload = TupList(data).\
+            to_dict(indices=["comm_or", "comm_dest", "comm_comp"], result_col="unload_time")
+        expected_time_unload_opt = TupList(self.instance.to_dict()['parameters']).\
+            to_dict(indices=["opt_time_limit"], is_list=False)
+        return
+
+    def check_no_simultaneity(self, data):
+        actual_simultaneity = TupList(data).\
+            to_dict(indices=["vehicle", "warehouse"], result_col=("arr_time", "dep_time"))
+        return
 
     # check simultaneity
-    # ls=[(v, v2, w) for v in model_instance.sVehicles for v2 in model_instance.sVehicles for w in model_instance.sWarehouses if v != v2 and |v va a w|
-    #  if ln(ls)=0 |v2 va a w| y |solapan|]
+    # ls=[(v, v2, w) for v in model_instance.sVehicles for v2 in model_instance.sVehicles
+    # for w in model_instance.sWarehouses if v != v2 and |v va a w|
+    #  if ln(ls)=0 |v2 va a w| y |solapa|]
 
     def check_solution(self, *args, **kwargs) -> dict:
         # Todo: create a method to check the solution.
         data = self.solution.to_dict()['data']
         print(data)
         return dict(
-            missing_required_pallets = self.check_required_pallets(data),
-            # correct_Hr =
-            # correct_Ho =
-            # no_simultaneity =
+            missing_required_pallets=self.check_required_pallets(data),
+            correct_hr=self.check_correct_hr(data),
+            correct_ho=self.check_correct_ho(data),
+            no_simultaneity=self.check_no_simultaneity
         )
 
     def solve(self, options):

@@ -113,7 +113,7 @@ class BasicMip(Experiment):
         self.solution = Solution({"data": data_json})
 
         # Printing the value of the OF
-        obj = model_instance.f_obj()
+        obj = model_instance.obj_func()
         print("Status: {} Objective value: {}".format(status, obj))
 
         # # Prepare solution

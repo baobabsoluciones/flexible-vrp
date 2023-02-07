@@ -39,7 +39,13 @@ class Experiment(ExperimentCore):
         return 0
 
     def check_required_pallets(self, data):
-        unload = TupList(v[""] for v in self.instance.data["unload"]).to_set()
+        #unload = TupList(data)
+        #print(data)
+        actual_unload = TupList(data).to_dict(indices=["comm_or", "comm_dest", "comm_comp"], result_col="unload").vapply(sum)
+        expected_unload = TupList(self.instance.to_dict()['commodities'])\
+            .to_dict(indices=["origin", "destination", "required"], result_col="quantity", is_list=False)
+
+        #unload = TupList(v[""] for v in self.instance.data["unload"]).to_set()
         return [{"unload": n} for n in unload]
 
     # check simultaneity
@@ -48,7 +54,8 @@ class Experiment(ExperimentCore):
 
     def check_solution(self, *args, **kwargs) -> dict:
         # Todo: create a method to check the solution.
-        data = self.solution.to_dict()['data_solution']
+        data = self.solution.to_dict()['data']
+        print(data)
         return dict(
             missing_required_pallets = self.check_required_pallets(data),
             # correct_Hr =

@@ -74,10 +74,21 @@ class Experiment(ExperimentCore):
         data = self.solution.to_dict()['data']
         print(data)
         return dict(
-            missing_required_pallets=self.check_required_pallets(data),
-            correct_hr=self.check_correct_hr(data),
-            correct_ho=self.check_correct_ho(data),
-            no_simultaneity=self.check_no_simultaneity
+            c2_max_cap=,
+            c3_load_req=,
+            c4y7_unload_req=self.check_required_pallets(data),
+            c8_zero_unload_first_stop=,
+            c9_max_load=,
+            c10_max_unload=,
+            c16_different_warehouse_for_stop=,
+            c18_load_duration=,
+            c19_unload_duration=,
+            c20_arrival_time=,
+            c21_departure_time=,
+            c22_unload_time=,
+            c23y24_no_simultaneity=self.check_no_simultaneity,
+            c25_correct_ho=self.check_correct_ho(data),
+            c26_correct_hr=self.check_correct_hr(data),
         )
 
     def solve(self, options):

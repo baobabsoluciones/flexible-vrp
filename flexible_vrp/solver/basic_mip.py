@@ -38,7 +38,7 @@ class BasicMip(Experiment):
             ]
         }
         # todo: estimate the number of stops for the current data. Remove from this method
-        self.instance.data["parameters"]["no_stops"] = 20
+        self.instance.data["parameters"]["no_stops"] = 3
         # Adding the set for Stops
         data["sStops"] = {
             None: [s for s in range(int(self.instance.data["parameters"]["no_stops"]))]
@@ -155,28 +155,28 @@ class BasicMip(Experiment):
             trip_durations[v, len(model_instance.sStops) - 1] = "-"
 
         data_solution = TupList([[v, s, w, c[0], c[1], c[2], c[3],
-                                  model_instance.vQuantityAtArrival[v, s, c].value,
-                                  model_instance.vLoadQuantity[v, s, c].value,
-                                  model_instance.vUnloadQuantity[v, s, c].value,
-                                  model_instance.vArrivalTime[v, s].value,
-                                  model_instance.vLoadDuration[v, s].value,
-                                  model_instance.vUnloadDuration[v, s].value,
-                                  model_instance.vUnloadTime[v, s].value,
-                                  model_instance.vDepartureTime[v, s].value,
-                                  trip_durations[v, s],
-                                  model_instance.vGamma[v, s].value]
-                                 for v in model_instance.sVehicles
-                                 for s in model_instance.sStops
-                                 for w in model_instance.sWarehouses
-                                 for c in model_instance.sCommodities
-                                 if model_instance.vLoadQuantity[v, s, c].value +
-                                 model_instance.vUnloadQuantity[v, s, c].value +
-                                 model_instance.vQuantityAtArrival[v, s, c].value
-                                 > 0
-                                 and model_instance.vAlpha[v, s, w].value == 1
-                                 ]).to_dictlist(["vehicle", "stop", "warehouse", "comm_or", "comm_dest", "comm_qty",
-                                                 "comm_comp", "qty_arr", "load", "unload", "arr_time", "load_dur",
-                                                 "unload_dur", "unload_time", "dep_time", "trip_dur", "gamma"])
+                         model_instance.vQuantityAtArrival[v, s, c].value,
+                         model_instance.vLoadQuantity[v, s, c].value,
+                         model_instance.vUnloadQuantity[v, s, c].value,
+                         model_instance.vArrivalTime[v, s].value,
+                         model_instance.vLoadDuration[v, s].value,
+                         model_instance.vUnloadDuration[v, s].value,
+                         model_instance.vUnloadTime[v, s].value,
+                         model_instance.vDepartureTime[v, s].value,
+                         trip_durations[v, s],
+                         model_instance.vGamma[v, s].value]
+                        for v in model_instance.sVehicles
+                        for s in model_instance.sStops
+                        for w in model_instance.sWarehouses
+                        for c in model_instance.sCommodities
+                        if model_instance.vLoadQuantity[v, s, c].value +
+                        model_instance.vUnloadQuantity[v, s, c].value +
+                        model_instance.vQuantityAtArrival[v, s, c].value
+                        > 0
+                        and model_instance.vAlpha[v, s, w].value == 1
+                        ]).to_dictlist(["vehicle", "stop", "warehouse", "comm_or", "comm_dest", "comm_qty",
+                                        "comm_comp", "qty_arr", "load", "unload", "arr_time", "load_dur",
+                                        "unload_dur", "unload_time", "dep_time", "trip_dur", "gamma"])
         return data_solution
 
         # Example of solve method:

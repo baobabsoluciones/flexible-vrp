@@ -41,17 +41,23 @@ class Experiment(ExperimentCore):
     def check_max_cap(self, data):
         quantity = TupList(data)\
             .to_dict(indices=["vehicle", "stop"], result_col="qty_arr").vapply(sum)
-        # capacity = TupList(self.instance.to_dict()['parameters']) \
-        #     .to_dict(result_col="vehicle_capacity", is_list=False)
-
-        return
+        veh_cap = self.instance.data["parameters"]["vehicle_capacity"]
+        # This dictionary returns all pairs vehicle-stop where the corresponding vehicle arrives to the stop with a
+        # larger amount of commodities than the vehicle capacity.
+        max_veh_cap_err = {(v,s): quantity[v,s] - veh_cap for (v,s) in quantity.keys() if quantity[v,s] > veh_cap}
+        return max_veh_cap_err
 
     def check_load_req(self, data):
         actual_load = TupList(data)\
             .to_dict(indices=["comm_or", "comm_dest", "comm_comp"], result_col="load").vapply(sum)
         expected_load = TupList(self.instance.to_dict()['commodities'])\
             .to_dict(indices=["origin", "destination", "required"], result_col="quantity", is_list=False)
-        return
+        # This is the list of required commodities (origin, destination)
+        compulsory_comm = list(set([(c[0], c[1]) for c in expected_load.keys() if c[2] == 1]))
+        # This dictionary returns the not unload commodity for every tuple (origin-destination) with some required
+        # commodity to be delivered
+        load_req_err = {c: expected_load[c + (1,)] - actual_load[c + (1,)] for c in compulsory_comm if actual_load[c + (1,)] < expected_load[c + (1,)]}
+        return load_req_err
 
     def check_required_pallets(self, data):
         actual_unload = TupList(data)\

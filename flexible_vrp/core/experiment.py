@@ -75,10 +75,12 @@ class Experiment(ExperimentCore):
             .to_dict(indices=["comm_or", "comm_dest", "comm_comp"], result_col="load").vapply(sum)
         expected_load = TupList(self.instance.to_dict()['commodities'])\
             .to_dict(indices=["origin", "destination", "required"], result_col="quantity", is_list=False)
-        comm = list(set([(c[0], c[1]) for c in expected_load.keys()]))
-        # load_err = {c: expected_load[c + (1,)] - actual_load[c + (1,)] for c in comm
-        #             if actual_load[c + (1,)] > expected_load[c + (1,)]}
-        return # load_err
+
+        comm_with_actual_load = [c for c in actual_load.keys() if actual_load[c] > 0]
+
+        load_excess_err = {c: - expected_load[c] + actual_load[c] for c in comm_with_actual_load
+                    if actual_load[c] > expected_load[c]}
+        return load_excess_err
 
     def check_zero_unload(self, data):
         zero_unload = TupList(data) \

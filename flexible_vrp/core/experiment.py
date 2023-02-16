@@ -79,7 +79,7 @@ class Experiment(ExperimentCore):
         comm_with_actual_load = [c for c in actual_load.keys() if actual_load[c] > 0]
 
         load_excess_err = {c: - expected_load[c] + actual_load[c] for c in comm_with_actual_load
-                    if actual_load[c] > expected_load[c]}
+                           if actual_load[c] > expected_load[c]}
         return load_excess_err
 
     def check_zero_unload(self, data):
@@ -156,7 +156,8 @@ class Experiment(ExperimentCore):
             .to_dict(indices=["vehicle", "stop"], result_col="load_dur").vapply(sum)
         unload_duration = TupList(data) \
             .to_dict(indices=["vehicle", "stop"], result_col="unload_dur").vapply(sum)
-        dep_time_err = {(v, s): (departure_time[v, s] - arrival_time[v, s] - load_duration[v, s] - unload_duration[v, s])
+        dep_time_err = {(v, s): (departure_time[v, s] - arrival_time[v, s]
+                                 - load_duration[v, s] - unload_duration[v, s])
                         for (v, s) in departure_time.keys() if departure_time[v, s] !=
                         (arrival_time[v, s] + load_duration[v, s] + unload_duration[v, s])}
         return dep_time_err
@@ -205,23 +206,23 @@ class Experiment(ExperimentCore):
         vehicle = list(set([(v[0]) for v in load.keys()]))
         stop = list(set([(i[1]) for i in load.keys()]))
         compulsory_comm = list(set([(c[2], c[3]) for c in load.keys() if c[4] == 1]))
-        # load_time_limit_err = {(v, s, c): load[v, s, c + (1,)] - (1 - gamma[v, s]) * veh_cap for c in compulsory_comm
-        #                        for v in vehicle for s in stop if load[v, s, c + (1,)] > (1 - gamma[v, s]) * veh_cap}
-        return # load_time_limit_err
+        load_time_limit_err = {(v, s, c): load[(v, s) + c + (1,)] - (1 - gamma[v, s]) * veh_cap for c in compulsory_comm
+                               for v in vehicle for s in stop if load[(v, s) + c + (1,)] > (1 - gamma[v, s]) * veh_cap}
+        return load_time_limit_err
 
     def check_unload_time_limit(self, data):
         unload = TupList(data) \
             .to_dict(indices=["vehicle", "stop", "comm_or", "comm_dest", "comm_comp"], result_col="unload").vapply(sum)
-        gamma = TupList(data) \
-            .to_dict(indices=["vehicle", "stop"], result_col="gamma")
+        gamma = TupList(data)\
+            .to_dict(indices=["vehicle", "stop"], result_col="gamma").vapply(sum)
         veh_cap = self.instance.data["parameters"]["vehicle_capacity"]
         vehicle = list(set([(v[0]) for v in unload.keys()]))
         stop = list(set([(i[1]) for i in unload.keys()]))
         compulsory_comm = list(set([(c[2], c[3]) for c in unload.keys() if c[4] == 1]))
-        # unload_time_limit_err = {(v, s, c): unload[v, s, c + (1,)] - (1 - gamma[v, s]) * veh_cap
-        # for c in compulsory_comm for v in vehicle for s in stop
-        # if unload[v, s, c + (1,)] > (1 - gamma[v, s]) * veh_cap}
-        return  # unload_time_limit_err
+        unload_time_limit_err = {(v, s, c): unload[(v, s) + c + (1,)] - (1 - gamma[v, s]) * veh_cap
+                                 for c in compulsory_comm for v in vehicle for s in stop
+                                 if unload[(v, s) + c + (1,)] > (1 - gamma[v, s]) * veh_cap}
+        return unload_time_limit_err
 
     def check_solution(self, *args, **kwargs) -> dict:
         # Todo: create a method to check the solution.

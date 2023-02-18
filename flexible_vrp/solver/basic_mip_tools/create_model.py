@@ -44,7 +44,7 @@ def create_model():
     model.vUnloadQuantity = Var(model.sVehicles, model.sStops, model.sCommodities, domain=NonNegativeReals)
     model.vTotalNonCompulsory = Var(domain=NonNegativeReals)
     model.vTripDuration = Var(model.sTripDuration, domain=NonNegativeReals)
-    model.vArrivalTime = Var(model.sVehicles, model.sStops, domain=NonNegativeReals)
+    model.vArrivalTime = Var(model.sVehicles, model.sStops, domain=NonNegativeIntegers)
     model.vDepartureTime = Var(model.sVehicles, model.sStops, domain=NonNegativeReals)
     model.vUnloadTime = Var(model.sVehicles, model.sStops, domain=NonNegativeReals)
     model.vLoadDuration = Var(model.sVehicles, model.sStops, domain=NonNegativeReals)

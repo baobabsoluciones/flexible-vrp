@@ -11,8 +11,25 @@ class Heuristic(Experiment):
     def __init__(self, instance, solution=None):
         super().__init__(instance, solution)
 
-    def prepare__data(self):
+    def solve(self):
+        self.gen_sol()
         pass
 
-    def solve(self):
+    def gen_sol(self):
+        self.prepare_data()
         pass
+
+    def prepare_data(self, instance):
+        pass
+
+    def explore(self):
+        # explore two future nodes and return dict{(v,n): (t,q)}
+        return
+
+    def select_move(self):
+        # select (v, n)
+        return
+
+    def update(self):
+        # update route selected
+        return

@@ -175,9 +175,20 @@ class Experiment(ExperimentCore):
         return unload_time_err
 
     def check_no_simultaneity(self, data):
-        actual_simultaneity = TupList(data). \
-            to_dict(indices=["vehicle", "warehouse"], result_col=("arr_time", "dep_time"))
-        return
+        arrival_time = TupList(data) \
+            .to_dict(indices=["vehicle", "warehouse"], result_col="arr_time").vapply(sum)
+        arrival_time2 = TupList(data) \
+            .to_dict(indices=["vehicle", "warehouse"], result_col="arr_time").vapply(sum)
+        departure_time = TupList(data) \
+            .to_dict(indices=["vehicle", "warehouse"], result_col="dep_time").vapply(sum)
+        departure_time2 = TupList(data) \
+            .to_dict(indices=["vehicle", "warehouse"], result_col="dep_time").vapply(sum)
+        simultaneity_err = {(v, v2, w): 1
+                            for (v, w) in arrival_time.keys()
+                            for (v2, w2) in arrival_time2.keys()
+                            if (v != v2 and w == w2 and ((arrival_time2[v2, w2] >= departure_time[v, w]) ==
+                                                         (arrival_time[v, w] >= departure_time2[v2, w2])))}
+        return simultaneity_err
 
     def check_correct_ho(self, data):
         actual_time_unload = TupList(data).\

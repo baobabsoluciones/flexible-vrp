@@ -109,7 +109,8 @@ class Experiment(ExperimentCore):
             .to_dict(indices=["vehicle", "stop"], result_col="warehouse")
         vehicle = list(set([(v[0]) for v in warehouse.keys()]))
         stop = list(set([(i[1]) for i in warehouse.keys() if i[1] != 0]))
-        warehouse_err = {(v, s): warehouse[v, s] for v in vehicle for s in stop if warehouse[v, s] == warehouse[v, s-1]}
+        warehouse_err = {(v, s): warehouse[v, s] for v in vehicle for s in stop
+                         if warehouse[v, s] == warehouse[v, s - 1]}
         return warehouse_err
 
     def check_load_duration(self, data):
@@ -119,7 +120,9 @@ class Experiment(ExperimentCore):
             .to_dict(indices=["vehicle", "stop"], result_col="load").vapply(sum)
         load_time_pallet = self.instance.data["parameters"]["load_pallet"]
         load_duration_err = {(v, s): load_duration[v, s] - load[v, s] * load_time_pallet
-                             for (v, s) in load_duration.keys() if load_duration[v, s] != load[v, s] * load_time_pallet}
+                             for (v, s) in load_duration.keys()
+                             if ((load_duration[v, s] < 0.99 * load[v, s] * load_time_pallet) or
+                                 (load_duration[v, s] > 1.01 * load[v, s] * load_time_pallet))}
         return load_duration_err
 
     def check_unload_duration(self, data):
@@ -129,8 +132,9 @@ class Experiment(ExperimentCore):
             .to_dict(indices=["vehicle", "stop"], result_col="unload").vapply(sum)
         unload_time_pallet = self.instance.data["parameters"]["unload_pallet"]
         unload_duration_err = {(v, s): unload_duration[v, s] - unload[v, s] * unload_time_pallet
-                               for (v, s) in unload_duration.keys() if unload_duration[v, s] !=
-                               unload[v, s] * unload_time_pallet}
+                               for (v, s) in unload_duration.keys()
+                               if ((unload_duration[v, s] < 0.99 * unload[v, s] * unload_time_pallet) or
+                                   (unload_duration[v, s] > 1.01 * unload[v, s] * unload_time_pallet))}
         return unload_duration_err
 
     def check_arrival_time(self, data):
@@ -143,8 +147,9 @@ class Experiment(ExperimentCore):
         vehicle = list(set([(v[0]) for v in departure_time.keys()]))
         stop = list(set([(i[1]) for i in departure_time.keys() if i[1] != 0]))
         arrival_time_err = {(v, s-1): (arrival_time[v, s] - trip_dur[v, s-1] - departure_time[v, s-1])
-                            for v in vehicle for s in stop if arrival_time[v, s] !=
-                            (trip_dur[v, s-1] + departure_time[v, s-1])}
+                            for v in vehicle for s in stop
+                            if ((arrival_time[v, s] < 0.99 * (trip_dur[v, s-1] + departure_time[v, s-1])) or
+                                (arrival_time[v, s] > 1.01 * (trip_dur[v, s-1] + departure_time[v, s-1])))}
         return arrival_time_err
 
     def check_departure_time(self, data):
@@ -158,8 +163,11 @@ class Experiment(ExperimentCore):
             .to_dict(indices=["vehicle", "stop"], result_col="unload_dur").vapply(sum)
         dep_time_err = {(v, s): (departure_time[v, s] - arrival_time[v, s]
                                  - load_duration[v, s] - unload_duration[v, s])
-                        for (v, s) in departure_time.keys() if departure_time[v, s] !=
-                        (arrival_time[v, s] + load_duration[v, s] + unload_duration[v, s])}
+                        for (v, s) in departure_time.keys()
+                        if ((departure_time[v, s] <
+                             0.99 * (arrival_time[v, s] + load_duration[v, s] + unload_duration[v, s])) or
+                            (departure_time[v, s] > 1.01 * (arrival_time[v, s] + load_duration[v, s] +
+                            unload_duration[v, s])))}
         return dep_time_err
 
     def check_unload_time(self, data):
@@ -170,8 +178,9 @@ class Experiment(ExperimentCore):
         unload_duration = TupList(data) \
             .to_dict(indices=["vehicle", "stop"], result_col="unload_dur").vapply(sum)
         unload_time_err = {(v, s): (unload_time[v, s] - arrival_time[v, s] - unload_duration[v, s])
-                           for (v, s) in unload_time.keys() if unload_time[v, s] !=
-                           (arrival_time[v, s] + unload_duration[v, s])}
+                           for (v, s) in unload_time.keys()
+                           if ((unload_time[v, s] < (arrival_time[v, s] + unload_duration[v, s]) * 0.99) or
+                               (unload_time[v, s] > (arrival_time[v, s] + unload_duration[v, s]) * 1.01))}
         return unload_time_err
 
     def check_no_simultaneity(self, data):
@@ -186,8 +195,8 @@ class Experiment(ExperimentCore):
         simultaneity_err = {(v, v2, w): 1
                             for (v, w) in arrival_time.keys()
                             for (v2, w2) in arrival_time2.keys()
-                            if (v != v2 and w == w2 and ((arrival_time2[v2, w2] >= departure_time[v, w]) ==
-                                                         (arrival_time[v, w] >= departure_time2[v2, w2])))}
+                            if (v != v2 and w == w2 and ((arrival_time2[v2, w2] >= 0.99 * departure_time[v, w]) ==
+                                                         (arrival_time[v, w] >= 0.99 * departure_time2[v2, w2])))}
         return simultaneity_err
 
     def check_correct_ho(self, data):

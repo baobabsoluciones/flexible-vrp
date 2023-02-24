@@ -11,17 +11,19 @@ class Heuristic(Experiment):
 
     def prepare_data(self):
         origins = set([c["location1"] for c in self.instance.data["trip_durations"]])
-        destinations = set(
-            [c["location2"] for c in self.instance.data["trip_durations"]]
-        )
+        destinations = set([c["location2"] for c in self.instance.data["trip_durations"]])
         # Getting a list from the union of destinations and origins
         self.warehouses = list(origins.union(destinations))
         self.vehicles = [v for v in range(int(self.instance.data["parameters"]["fleet_size"]))]
         self.trip_duration = {(x["location1"], x["location2"]): x["time"] for x in self.instance.data["trip_durations"]}
-        self.comm_req = {(c["origin"], c["destination"]): c["quantity"] for c in self.instance.data["commodities"] if c["required"]}
-        self.comm_opt = {(c["origin"], c["destination"]): c["quantity"] for c in self.instance.data["commodities"] if not c["required"]}
-        self.comm_req_loaded = {(c["origin"], c["destination"]): 0 for c in self.instance.data["commodities"] if c["required"]}
-        self.comm_opt_loaded = {(c["origin"], c["destination"]): 0 for c in self.instance.data["commodities"] if not c["required"]}
+        self.comm_req = {(c["origin"], c["destination"]): c["quantity"]
+                         for c in self.instance.data["commodities"] if c["required"]}
+        self.comm_opt = {(c["origin"], c["destination"]): c["quantity"]
+                         for c in self.instance.data["commodities"] if not c["required"]}
+        self.comm_req_loaded = {(c["origin"], c["destination"]): 0
+                                for c in self.instance.data["commodities"] if c["required"]}
+        self.comm_opt_loaded = {(c["origin"], c["destination"]): 0
+                                for c in self.instance.data["commodities"] if not c["required"]}
 
 
         self.current_warehouse = dict()
@@ -36,16 +38,19 @@ class Heuristic(Experiment):
         #         best_sol = current_sol
         return 1
 
+
     def gen_sol(self):
         self.current_warehouse = {v: random.choice(self.warehouses) for v in self.vehicles}
         self.explore()
         self.select_move()
+        self.update()
         sol = dict()
         return sol
 
 
     def explore(self):
-        tree = {(v, w): random.random() for v in self.vehicles for w in self.warehouses if w != self.current_warehouse[v]}
+        tree = {(v, w): random.random() for v in self.vehicles for w in self.warehouses
+                if w != self.current_warehouse[v]}
         return tree
 
 

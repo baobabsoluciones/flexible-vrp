@@ -126,7 +126,6 @@ class BasicMip(Experiment):
         #     self.variables_to_excel(model_result)
 
         return 1  # dict(status=STATUS_TIME_LIMIT, status_sol=SOLUTION_STATUS_FEASIBLE)
-        return {}
 
     def set_solver(self, options):
         # Create the solver object and set the relevant options.

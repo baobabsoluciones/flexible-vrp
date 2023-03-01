@@ -62,4 +62,13 @@ class Heuristic(Experiment):
 
     def update(self):
         # update route selected
-        pass
+
+        t = 0
+        v = self.move[0]
+        cant = self.comm_req[(self.current_warehouse[v], self.move[1])]
+        q = min(cant, 22)
+        self.comm_req[(self.current_warehouse[v], self.move[1])] -= q
+        self.comm_req_loaded[(self.current_warehouse[v], self.move[1])] += q
+        self.sol[self.move] = (q, t)  #for q in c[quantity] (leer c[origin] y c[destination])
+        self.current_warehouse[v] = self.move[1]
+        return self.sol

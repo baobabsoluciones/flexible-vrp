@@ -44,16 +44,33 @@ class Heuristic(Experiment):
         return 1
 
     def gen_sol(self):
-        self.current_warehouse = {v: random.choice(self.warehouses) for v in self.vehicles}
-        self.explore()
-        self.select_move()
-        self.update()
+        elegible_warehouses = [w for w in self.warehouses if any([(w, w2) for w2 in self.warehouses if
+                                                                  (w, w2) in self.comm_req.keys()])]
+        self.current_warehouse = {v: random.choice(elegible_warehouses) for v in self.vehicles}
         sol = dict()
+
+        stop = False
+
+        while not stop:
+            self.explore()
+            self.select_move()
+            self.update()
+            stop = self.check_if_stop()
         return sol
 
+    def check_if_stop(self):
+        # com_req_delivered = sum(self.comm_req[i] for i in self.warehouses.keys()) == 0
+        time_limit_over = all([v for v in self.vehicles if v.current_time[v] > self.time_limit])
+        return time_limit_over
+
     def explore(self):
-        self.tree = {(v, w): random.random() for v in self.vehicles for w in self.warehouses
-                     if w != self.current_warehouse[v]}
+        self.tree = {(v, w2): random.random() for v in self.vehicles for w2 in self.warehouses
+                     if w2 != self.current_warehouse[v]
+                     and (self.current_warehouse[v], w2) in self.comm_req.keys()
+                     and self.comm_req[self.current_warehouse[v], w2] > 0}
+
+                     # and any([(self.current_warehouse[v], w2) if (self.current_warehouse[v],w2) in self.comm_req.keys()
+                     #          and self.comm_req[self.current_warehouse[v], w2] > 0])}
         return self.tree
 
     def select_move(self):

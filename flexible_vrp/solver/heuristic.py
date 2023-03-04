@@ -47,7 +47,7 @@ class Heuristic(Experiment):
         elegible_warehouses = [w for w in self.warehouses if any([(w, w2) for w2 in self.warehouses if
                                                                   (w, w2) in self.comm_req.keys()])]
         self.current_warehouse = {v: random.choice(elegible_warehouses) for v in self.vehicles}
-        sol = dict()
+        self.sol = dict()
 
         stop = False
 
@@ -56,7 +56,7 @@ class Heuristic(Experiment):
             self.select_move()
             self.update()
             stop = self.check_if_stop()
-        return sol
+        return self.sol
 
     def check_if_stop(self):
         # com_req_delivered = sum(self.comm_req[i] for i in self.warehouses.keys()) == 0

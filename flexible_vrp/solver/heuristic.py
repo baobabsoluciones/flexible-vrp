@@ -48,14 +48,12 @@ class Heuristic(Experiment):
                                                                   (w, w2) in self.comm_req.keys()])]
         self.current_warehouse = {v: random.choice(elegible_warehouses) for v in self.vehicles}
         self.sol = dict()
-
         stop = False
-
         while not stop:
             self.explore()
             self.select_move()
             self.update()
-            stop = self.check_if_stop()
+            # stop = self.check_if_stop()
         return self.sol
 
     def check_if_stop(self):
@@ -64,28 +62,39 @@ class Heuristic(Experiment):
         return time_limit_over
 
     def explore(self):
-        self.tree = {(v, w2): random.random() for v in self.vehicles for w2 in self.warehouses
+        self.t = 0
+        self.tree = {(v, w2): (self.comm_req[self.current_warehouse[v], w2] + self.comm_req[w2, w3], self.t)
+                     for v in self.vehicles for w2 in self.warehouses
+                     for w3 in self.warehouses
                      if w2 != self.current_warehouse[v]
                      and (self.current_warehouse[v], w2) in self.comm_req.keys()
-                     and self.comm_req[self.current_warehouse[v], w2] > 0}
-
-                     # and any([(self.current_warehouse[v], w2) if (self.current_warehouse[v],w2) in self.comm_req.keys()
-                     #          and self.comm_req[self.current_warehouse[v], w2] > 0])}
+                     and self.comm_req[self.current_warehouse[v], w2] > 0
+                     and w3 != w2 and (w2, w3) in self.comm_req.keys()
+                     # a = self.comm_req[w2, w3] if (w3 != w2 and (w2, w3) in self.comm_req.keys() and self.comm_req[w2, w3] > 0)
+                     }
+        # self.tree[v,w2] += self.comm_req[w2, w3] for v in self.vehicles for w2 in self.warehouses
+        # for w3 in self.warehouses
+        # a = 0
+        # if (w3 != w2 and (w2, w3) in self.comm_req.keys() and self.comm_req[w2, w3] > 0 for w2 in self.warehouses
+        #     for w3 in self.warehouses):
+        #     a = self.comm_req[w2, w3]
         return self.tree
 
     def select_move(self):
-        self.move = random.choice(list(self.tree.keys()))
+        k = max(valor[0] for valor in self.tree.values())
+        for clave, valor in self.tree.items():
+            if valor == k:
+                break
+        self.move = clave
         return self.move
 
     def update(self):
         # update route selected
-
-        t = 0
         v = self.move[0]
         cant = self.comm_req[(self.current_warehouse[v], self.move[1])]
         q = min(cant, 22)
         self.comm_req[(self.current_warehouse[v], self.move[1])] -= q
         self.comm_req_loaded[(self.current_warehouse[v], self.move[1])] += q
-        self.sol[self.move] = (q, t)  #for q in c[quantity] (leer c[origin] y c[destination])
+        self.sol[self.move] = (q, self.t)  #for q in c[quantity] (leer c[origin] y c[destination])
         self.current_warehouse[v] = self.move[1]
         return self.sol

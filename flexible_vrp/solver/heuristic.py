@@ -47,7 +47,8 @@ class Heuristic(Experiment):
         elegible_warehouses = [w for w in self.warehouses if any([(w, w2) for w2 in self.warehouses if
                                                                   (w, w2) in self.comm_req.keys()])]
         self.current_warehouse = {v: random.choice(elegible_warehouses) for v in self.vehicles}
-        self.sol = dict()
+        self.sol = {(v, self.current_warehouse[v]): (0, 0) for v in self.vehicles
+                    }
         stop = False
         while not stop:
             self.explore()

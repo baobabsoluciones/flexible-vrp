@@ -16,8 +16,10 @@ class Heuristic(Experiment):
         self.warehouses = list(origins.union(destinations))
         self.vehicles = [v for v in range(int(self.instance.data["parameters"]["fleet_size"]))]
         self.trip_duration = {(x["location1"], x["location2"]): x["time"] for x in self.instance.data["trip_durations"]}
-        self.comm_req = {(c["origin"], c["destination"]): c["quantity"]
-                         for c in self.instance.data["commodities"] if c["required"]}
+        self.comm_req = {(w1, w2): 0 for w1 in self.warehouses for w2 in self.warehouses if w1 != w2}
+        for c in self.instance.data["commodities"]:
+            if c["required"]:
+                self.comm_req[(c["origin"], c["destination"])] = c["quantity"]
         self.comm_opt = {(c["origin"], c["destination"]): c["quantity"]
                          for c in self.instance.data["commodities"] if not c["required"]}
         self.comm_req_loaded = {(c["origin"], c["destination"]): 0
@@ -100,7 +102,8 @@ class Heuristic(Experiment):
         cant = self.comm_req[(self.current_warehouse[v], self.move[1])]
         q = min(cant, 22)
         self.comm_req[(self.current_warehouse[v], self.move[1])] -= q
-        self.comm_req_loaded[(self.current_warehouse[v], self.move[1])] += q
+        if (q!=0):
+            self.comm_req_loaded[(self.current_warehouse[v], self.move[1])] += q
         self.sol[self.move] = (q, self.t)  #for q in c[quantity] (leer c[origin] y c[destination])
         self.current_warehouse[v] = self.move[1]
         return self.sol

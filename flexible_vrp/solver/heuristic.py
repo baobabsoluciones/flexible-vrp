@@ -16,17 +16,6 @@ class Heuristic(Experiment):
         self.warehouses = list(origins.union(destinations))
         self.vehicles = [v for v in range(int(self.instance.data["parameters"]["fleet_size"]))]
         self.trip_duration = {(x["location1"], x["location2"]): x["time"] for x in self.instance.data["trip_durations"]}
-        self.comm_req = {(w1, w2): 0 for w1 in self.warehouses for w2 in self.warehouses if w1 != w2}
-        for c in self.instance.data["commodities"]:
-            if c["required"]:
-                self.comm_req[(c["origin"], c["destination"])] = c["quantity"]
-        self.comm_opt = {(c["origin"], c["destination"]): c["quantity"]
-                         for c in self.instance.data["commodities"] if not c["required"]}
-        self.comm_req_loaded = {(c["origin"], c["destination"]): 0
-                                for c in self.instance.data["commodities"] if c["required"]}
-        self.comm_opt_loaded = {(c["origin"], c["destination"]): 0
-                                for c in self.instance.data["commodities"] if not c["required"]}
-        self.current_warehouse = dict()
         self.veh_cap = self.instance.data["parameters"]["vehicle_capacity"]
         self.load_time = self.instance.data["parameters"]["load_pallet"]
         self.unload_time = self.instance.data["parameters"]["unload_pallet"]
@@ -38,19 +27,30 @@ class Heuristic(Experiment):
         t_init = timer()  # guarda en t_init en tiempo actual
         best_sol = dict()
         time = timer() - t_init
-        time_limit = options["solver_config"]["TimeLimit"]
-        while time <= time_limit:  # comprobamos que tiempo_actual - t_init <= time_limit
+        self.time_limit = options["solver_config"]["TimeLimit"]
+        while time <= self.time_limit:  # comprobamos que tiempo_actual - t_init <= time_limit
             current_sol = self.gen_sol()
             if current_sol["obj"] < best_sol["obj"]:
                 best_sol = current_sol
         return 1
 
     def gen_sol(self):
+        self.comm_req = {(w1, w2): 0 for w1 in self.warehouses for w2 in self.warehouses if w1 != w2}
+        for c in self.instance.data["commodities"]:
+            if c["required"]:
+                self.comm_req[(c["origin"], c["destination"])] = c["quantity"]
+        self.comm_opt = {(c["origin"], c["destination"]): c["quantity"]
+                         for c in self.instance.data["commodities"] if not c["required"]}
+        self.comm_req_loaded = {(c["origin"], c["destination"]): 0
+                                for c in self.instance.data["commodities"] if c["required"]}
+        self.comm_opt_loaded = {(c["origin"], c["destination"]): 0
+                                for c in self.instance.data["commodities"] if not c["required"]}
         elegible_warehouses = [w for w in self.warehouses if any([(w, w2) for w2 in self.warehouses if
                                                                   (w, w2) in self.comm_req.keys()])]
         self.current_warehouse = {v: random.choice(elegible_warehouses) for v in self.vehicles}
-        self.sol = {(v, self.current_warehouse[v]): (0, 0) for v in self.vehicles
-                    }
+        self.current_time = {v: 0 for v in self.vehicles}  # "t" + str(v)
+        self.stops = {v: 0 for v in self.vehicles}
+        self.sol = {(v, self.current_warehouse[v], self.stops[v]): (0, self.current_time[v]) for v in self.vehicles}
         stop = False
         while not stop:
             self.explore()
@@ -61,19 +61,26 @@ class Heuristic(Experiment):
 
     def check_if_stop(self):
         # com_req_delivered = sum(self.comm_req[i] for i in self.warehouses.keys()) == 0
-        time_limit_over = all([v for v in self.vehicles if v.current_time[v] > self.time_limit])
+        time_limit_over = all([v for v in self.vehicles if self.current_time[v] > self.time_limit])
         return time_limit_over
 
     def explore(self, w2=None):
-        self.t = 0
-        self.tree = {(v, w2, w3): (self.comm_req[self.current_warehouse[v], w2] + self.comm_req[w2, w3], self.t)
+        #carga + viaje + descarga + carga + viaje + descarga
+        self.tree = {(v, w2, w3): (self.comm_req[self.current_warehouse[v], w2] + self.comm_req[w2, w3],
+                                   (self.comm_req[self.current_warehouse[v], w2] * self.load_time +
+                                   self.trip_duration[self.current_warehouse[v], w2] +
+                                   self.comm_req[self.current_warehouse[v], w2] * self.unload_time +
+                                   self.comm_req[w2, w3] * self.load_time +
+                                   self.trip_duration[self.current_warehouse[v], w2] +
+                                   self.comm_req[w2, w3] * self.unload_time
+                                    ))
                      for v in self.vehicles for w2 in self.warehouses for w3 in self.warehouses
                      if (w2 != self.current_warehouse[v]
                          and (self.current_warehouse[v], w2) in self.comm_req.keys()
                          and w3 != w2
                          and (w2, w3) in self.comm_req.keys()
                          and self.comm_req[w2, w3] > 0)
-        }
+                     }
         for v in self.vehicles:
             for w2 in self.warehouses:
                 a = 0
@@ -84,26 +91,38 @@ class Heuristic(Experiment):
                         and w2 != self.current_warehouse[v]
                         and (self.current_warehouse[v], w2) in self.comm_req.keys()
                         and self.comm_req[self.current_warehouse[v], w2] > 0):
-                    self.tree[(v, w2)] = (self.comm_req[self.current_warehouse[v], w2], self.t)
+                    self.tree[(v, w2)] = (self.comm_req[self.current_warehouse[v], w2],
+                                          (self.comm_req[self.current_warehouse[v], w2] * self.load_time +
+                                           self.trip_duration[self.current_warehouse[v], w2] +
+                                           self.comm_req[self.current_warehouse[v], w2] * self.unload_time
+                                           ))
         return self.tree
 
     def select_move(self):
         # k = max(valor[0] for valor in self.tree.values())
-        max_valor = None
+        alpha = 0.5
+        beta = - 0.5
+        max_attractive = None
         for clave, valor in self.tree.items():
-            if max_valor is None or valor[0] > max_valor:
-                max_valor = valor[0]
-        self.move = random.choice([clave for clave, valor in self.tree.items() if valor[0] == max_valor])[:2]
+            if max_attractive is None or (valor[0] * alpha + valor[1] * beta) > max_attractive:
+                max_attractive = (valor[0] * alpha + valor[1] * beta)
+        self.move = random.choice([clave for clave, valor in self.tree.items()
+                                   if (valor[0] * alpha + valor[1] * beta) == max_attractive])[:2]
         return self.move
 
     def update(self):
-        # update route selected
         v = self.move[0]
-        cant = self.comm_req[(self.current_warehouse[v], self.move[1])]
+        w = self.current_warehouse[v]
+        w2 = self.move[1]
+        cant = self.comm_req[w, w2]
         q = min(cant, 22)
-        self.comm_req[(self.current_warehouse[v], self.move[1])] -= q
+        t = (q * self.load_time + self.trip_duration[w, w2] + q * self.unload_time)
+        # update route selected
+        self.comm_req[w, w2] -= q
         if (q!=0):
-            self.comm_req_loaded[(self.current_warehouse[v], self.move[1])] += q
-        self.sol[self.move] = (q, self.t)  #for q in c[quantity] (leer c[origin] y c[destination])
-        self.current_warehouse[v] = self.move[1]
+            self.comm_req_loaded[w, w2] += q
+        self.current_time[v] += t
+        self.stops[v] += 1
+        self.sol[v, w2, self.stops[v]] = (q, t)
+        self.current_warehouse[v] = w2
         return self.sol

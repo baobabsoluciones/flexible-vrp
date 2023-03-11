@@ -56,13 +56,20 @@ class Heuristic(Experiment):
             self.explore()
             self.select_move()
             self.update()
-            # stop = self.check_if_stop()
+            stop = self.check_if_stop()
         return self.sol
 
     def check_if_stop(self):
-        # com_req_delivered = sum(self.comm_req[i] for i in self.warehouses.keys()) == 0
-        time_limit_over = all([v for v in self.vehicles if self.current_time[v] > self.time_limit])
-        return time_limit_over
+        time_limit_over = [v for v in self.vehicles if self.current_time[v] > self.req_time_limit]
+        stop = 0
+        if self.comm_req.values() == 0:
+            stop = 1
+        if len(time_limit_over) == len(self.vehicles):
+            stop = 1
+        for i in time_limit_over:
+            if i in self.vehicles:
+                self.vehicles.remove(i)
+        return stop
 
     def explore(self, w2=None):
         #carga + viaje + descarga + carga + viaje + descarga
@@ -100,8 +107,8 @@ class Heuristic(Experiment):
 
     def select_move(self):
         # k = max(valor[0] for valor in self.tree.values())
-        alpha = 0.5
-        beta = - 0.5
+        alpha = 1
+        beta = -1
         max_attractive = None
         for clave, valor in self.tree.items():
             if max_attractive is None or (valor[0] * alpha + valor[1] * beta) > max_attractive:

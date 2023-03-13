@@ -36,9 +36,12 @@ class Heuristic(Experiment):
 
     def gen_sol(self):
         self.comm_req = {(w1, w2): 0 for w1 in self.warehouses for w2 in self.warehouses if w1 != w2}
-        for c in self.instance.data["commodities"]:
-            if c["required"]:
-                self.comm_req[(c["origin"], c["destination"])] = c["quantity"]
+        for c in [c for c in self.instance.data["commodities"] if c['required']]:
+            self.comm_req[(c["origin"], c["destination"])] = c["quantity"]
+
+        # for c in self.instance.data["commodities"]:
+        #     if c["required"]:
+        #         self.comm_req[(c["origin"], c["destination"])] = c["quantity"]
         self.comm_opt = {(c["origin"], c["destination"]): c["quantity"]
                          for c in self.instance.data["commodities"] if not c["required"]}
         self.comm_req_loaded = {(c["origin"], c["destination"]): 0
@@ -88,6 +91,7 @@ class Heuristic(Experiment):
                          and (w2, w3) in self.comm_req.keys()
                          and self.comm_req[w2, w3] > 0)
                      }
+
         for v in self.vehicles:
             for w2 in self.warehouses:
                 a = 0

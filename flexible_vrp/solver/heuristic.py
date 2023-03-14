@@ -21,12 +21,14 @@ class Heuristic(Experiment):
         self.unload_time = self.instance.data["parameters"]["unload_pallet"]
         self.req_time_limit = self.instance.data["parameters"]["req_time_limit"]
         self.opt_time_limit = self.instance.data["parameters"]["opt_time_limit"]
+        self.average_time_d = self.instance.data["parameters"]["average_time_d"]
 
     def solve(self, options):
         self.prepare_data()
         t_init = timer()  # guarda en t_init en tiempo actual
         best_sol = dict()
         time = timer() - t_init
+        # self.time_limit es el tiempo máx de simulación
         self.time_limit = options["solver_config"]["TimeLimit"]
         while time <= self.time_limit:  # comprobamos que tiempo_actual - t_init <= time_limit
             current_sol = self.gen_sol()
@@ -38,7 +40,6 @@ class Heuristic(Experiment):
         self.comm_req = {(w1, w2): 0 for w1 in self.warehouses for w2 in self.warehouses if w1 != w2}
         for c in [c for c in self.instance.data["commodities"] if c['required']]:
             self.comm_req[(c["origin"], c["destination"])] = c["quantity"]
-
         # for c in self.instance.data["commodities"]:
         #     if c["required"]:
         #         self.comm_req[(c["origin"], c["destination"])] = c["quantity"]
@@ -48,9 +49,9 @@ class Heuristic(Experiment):
                                 for c in self.instance.data["commodities"] if c["required"]}
         self.comm_opt_loaded = {(c["origin"], c["destination"]): 0
                                 for c in self.instance.data["commodities"] if not c["required"]}
-        elegible_warehouses = [w for w in self.warehouses if any([(w, w2) for w2 in self.warehouses if
+        possible_warehouses = [w for w in self.warehouses if any([(w, w2) for w2 in self.warehouses if
                                                                   (w, w2) in self.comm_req.keys()])]
-        self.current_warehouse = {v: random.choice(elegible_warehouses) for v in self.vehicles}
+        self.current_warehouse = {v: random.choice(possible_warehouses) for v in self.vehicles}
         self.current_time = {v: 0 for v in self.vehicles}  # "t" + str(v)
         self.stops = {v: 0 for v in self.vehicles}
         self.sol = {(v, self.current_warehouse[v], self.stops[v]): (0, self.current_time[v]) for v in self.vehicles}
@@ -75,15 +76,14 @@ class Heuristic(Experiment):
         return stop
 
     def explore(self, w2=None):
-        #carga + viaje + descarga + carga + viaje + descarga
+        # carga + viaje + descarga + carga + viaje + descarga
         self.tree = {(v, w2, w3): (self.comm_req[self.current_warehouse[v], w2] + self.comm_req[w2, w3],
                                    (self.comm_req[self.current_warehouse[v], w2] * self.load_time +
                                    self.trip_duration[self.current_warehouse[v], w2] +
                                    self.comm_req[self.current_warehouse[v], w2] * self.unload_time +
                                    self.comm_req[w2, w3] * self.load_time +
                                    self.trip_duration[self.current_warehouse[v], w2] +
-                                   self.comm_req[w2, w3] * self.unload_time
-                                    ))
+                                   self.comm_req[w2, w3] * self.unload_time))
                      for v in self.vehicles for w2 in self.warehouses for w3 in self.warehouses
                      if (w2 != self.current_warehouse[v]
                          and (self.current_warehouse[v], w2) in self.comm_req.keys()
@@ -124,13 +124,15 @@ class Heuristic(Experiment):
         return self.tree
 
     def select_move(self):
-        # k = max(valor[0] for valor in self.tree.values())
-        alpha = 1/44
-        beta = 1000/56
+        # attractive
+        k = self.veh_cap * (self.load_time + self.unload_time) * 2
+        alpha = 1/(self.veh_cap * 2)
+        beta = self.average_time_d * 2 + k
         max_attractive = None
         for clave, valor in self.tree.items():
             if max_attractive is None or (valor[0] * alpha + beta / valor[1]) > max_attractive:
                 max_attractive = (valor[0] * alpha + valor[1] * beta)
+        # To-Do: cambiar este método por el método MonteCarlo
         self.move = random.choice([clave for clave, valor in self.tree.items()
                                    if (valor[0] * alpha + valor[1] * beta) == max_attractive])[:2]
         return self.move

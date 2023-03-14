@@ -107,15 +107,29 @@ class Heuristic(Experiment):
                                            self.trip_duration[self.current_warehouse[v], w2] +
                                            self.comm_req[self.current_warehouse[v], w2] * self.unload_time
                                            ))
+        # self.tree.update({(v, w2): (self.comm_req[self.current_warehouse[v], w2],
+        #                             (self.comm_req[self.current_warehouse[v], w2] * self.load_time +
+        #                              self.trip_duration[self.current_warehouse[v], w2] +
+        #                              self.comm_req[self.current_warehouse[v], w2] * self.unload_time))
+        #                   for v in self.vehicles
+        #                   for w2 in self.warehouses
+        #                   if (w2 != self.current_warehouse[v]
+        #                       and (self.current_warehouse[v], w2) in self.comm_req.keys()
+        #                       and any((v, w2, w3) in self.tree for w3 in self.warehouses)
+        #                       or (self.comm_req[w2, w3] > 0
+        #                           and (self.current_warehouse[v], w2) in self.comm_req.keys()
+        #                           and w3 != w2
+        #                           and (w2, w3) in self.comm_req.keys()))
+        #                   })
         return self.tree
 
     def select_move(self):
         # k = max(valor[0] for valor in self.tree.values())
-        alpha = 1
-        beta = -1
+        alpha = 1/44
+        beta = 1000/56
         max_attractive = None
         for clave, valor in self.tree.items():
-            if max_attractive is None or (valor[0] * alpha + valor[1] * beta) > max_attractive:
+            if max_attractive is None or (valor[0] * alpha + beta / valor[1]) > max_attractive:
                 max_attractive = (valor[0] * alpha + valor[1] * beta)
         self.move = random.choice([clave for clave, valor in self.tree.items()
                                    if (valor[0] * alpha + valor[1] * beta) == max_attractive])[:2]
@@ -126,12 +140,13 @@ class Heuristic(Experiment):
         w = self.current_warehouse[v]
         w2 = self.move[1]
         cant = self.comm_req[w, w2]
-        q = min(cant, 22)
+        q = min(cant, self.veh_cap)
         t = (q * self.load_time + self.trip_duration[w, w2] + q * self.unload_time)
         # update route selected
         self.comm_req[w, w2] -= q
         if (q!=0):
             self.comm_req_loaded[w, w2] += q
+        # self.comm_req_loaded[w, w2] += q if q != 0 else None
         self.current_time[v] += t
         self.stops[v] += 1
         self.sol[v, w2, self.stops[v]] = (q, t)

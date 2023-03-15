@@ -7,7 +7,7 @@ from analysis_tools.read_tools import read_input_data
 config = {
     "solver": "basic_mip",
     "solver_name": "gurobi",
-    "solver_config": {"TimeLimit": 120, "gap": 0.01},
+    "solver_config": {"TimeLimit": 600, "gap": 0.1},
 }
 # data = load_json("./data/simple_instance.json")
 # file_path = "data/datos2.xlsx"

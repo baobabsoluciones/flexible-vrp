@@ -1,9 +1,10 @@
 import json
+import pyomo.environ as pyo
 
 
 def from_json(path: str):
     """
-    :param path: path to json file
+    param path: path to json file
 
     :return: a dict
     """
@@ -12,11 +13,29 @@ def from_json(path: str):
     return data_json
 
 
+def safe_value(x):
+    """
+    Safely apply pyomo value to a variable.
+    pyomo value generate an error if the variable has not been used.
+    This function will return 0 instead.
+    param x: a pyomo variable
+    :return:
+    """
+    try:
+        if x is not None:
+            return pyo.value(x)
+        else:
+            return 0
+    except:
+        return 0
+# safe_value(model_result.vMyVariable[1,2])
+
+
 def to_json(data, path):
     """
     Export data to a json file.
 
-    :param data: the data to export
+    param data: the data to export
     :param path: path of the json file
     :return: nothing
     """

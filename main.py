@@ -4,16 +4,16 @@ from analysis_tools.read_tools import read_input_data
 
 
 # Todo: create functions to read the config and data.
-# config = {
-#     "solver": "basic_mip",
-#     "solver_name": "gurobi",
-#     "solver_config": {"TimeLimit": 120, "gap": 0.01},
-# }
-
 config = {
-    "solver": "heuristic",
-    "solver_config": {"TimeLimit": 120}
+    "solver": "basic_mip",
+    "solver_name": "gurobi",
+    "solver_config": {"TimeLimit": 600, "gap": 0.01},
 }
+
+# config = {
+#     "solver": "heuristic",
+#     "solver_config": {"TimeLimit": 120}
+# }
 
 # data = load_json("./data/simple_instance.json")
 file_path = "data/datos2.xlsx"

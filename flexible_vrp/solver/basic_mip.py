@@ -93,11 +93,12 @@ class BasicMip(Experiment):
 
         data = self.prepare_model_data()
 
+
         # Todo: replace this by the solve method
         model = create_model()
 
         model_instance = model.create_instance(data, report_timing=False)
-
+        print("number constraints", model_instance.nconstraints())
         logfile = "./data/logfile.log"
 
         # Solve
@@ -115,7 +116,6 @@ class BasicMip(Experiment):
         # Printing the value of the OF
         obj = model_instance.obj_func()
         print("Status: {} Objective value: {}".format(status, obj))
-        print("number constraints", model_instance.nconstraints())
 
         # # Prepare solution
         # if self.is_feasible(self.status): #todo: create method

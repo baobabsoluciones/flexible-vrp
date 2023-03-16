@@ -194,6 +194,13 @@ def create_model():
         else:
             return Constraint.Skip
 
+    def fc29_fobj(model):
+        return sum(model.vUnloadQuantity[v, s, c]
+                   for v in model.sVehicles
+                   for s in model.sStops
+                   for c in model.sCommodities
+                   if c[3] == 0) >= 0
+
     # Objective Function
     def f_obj_expression(model):
         return sum(model.vUnloadQuantity[v, s, c]
@@ -241,6 +248,7 @@ def create_model():
     model.c27_load_time_limit = Constraint(model.sVehicles, model.sStops, model.sCommodities, rule=fc27_load_time_limit)
     model.c28_unload_time_limit = Constraint(model.sVehicles, model.sStops, model.sCommodities,
                                              rule=fc28_unload_time_limit)
+    model.c29_fobj = Constraint(rule=fc29_fobj)
 
     # Activate Objetive function
     model.obj_func = Objective(rule=f_obj_expression, sense=pyomo.core.maximize)

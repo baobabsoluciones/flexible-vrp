@@ -16,7 +16,7 @@ config = {
 # }
 
 # data = load_json("./data/simple_instance.json")
-# file_path = "data/dia_1.xlsx"
+file_path = "data/dia_1.xlsx"
 # file_path = "data/dia_2.xlsx"
 # file_path = "data/inst_0.xlsx"
 # file_path = "data/inst_1.xlsx"

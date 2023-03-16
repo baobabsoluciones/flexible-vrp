@@ -115,6 +115,7 @@ class BasicMip(Experiment):
         # Printing the value of the OF
         obj = model_instance.obj_func()
         print("Status: {} Objective value: {}".format(status, obj))
+        print("number constraints", model_instance.nconstraints())
 
         # # Prepare solution
         # if self.is_feasible(self.status): #todo: create method

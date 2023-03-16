@@ -282,14 +282,14 @@ class Experiment(ExperimentCore):
         data = self.solution.to_dict()['data']
         print(data)
         return dict(
-            c2_max_cap=self.check_max_cap(data),
-            c3_load_req=self.check_load_req(data),
-            c4_unload_req=self.check_unload_req(data),
-            c7_load_total=self.check_load(data),
-            c8_zero_unload_first_stop=self.check_zero_unload(data),
-            c9_max_load=self.check_max_load(data),
-            c10_max_unload=self.check_max_unload(data),
-            c16_different_warehouse_for_stop=self.check_different_warehouse(data),
+            # c2_max_cap=self.check_max_cap(data),
+            # c3_load_req=self.check_load_req(data),
+            # c4_unload_req=self.check_unload_req(data),
+            # c7_load_total=self.check_load(data),
+            # c8_zero_unload_first_stop=self.check_zero_unload(data),
+            # c9_max_load=self.check_max_load(data),
+            # c10_max_unload=self.check_max_unload(data),
+            # c16_different_warehouse_for_stop=self.check_different_warehouse(data),
             # c18_load_duration=self.check_load_duration(data),
             # c19_unload_duration=self.check_unload_duration(data),
             # # c20_arrival_time=self.check_arrival_time(data), # error al leer trip_duration

@@ -118,11 +118,8 @@ class Experiment(ExperimentCore):
         return warehouse_err
 
     def check_load_duration(self, data):
-        dict_load_duration = TupList(data)\
-            .to_dict(indices=["vehicle", "stop"], result_col="load_dur")
-        load_duration = {}
-        for key, value in dict_load_duration.items():
-            load_duration[key] = value[0]
+        load_duration = TupList(data)\
+            .to_dict(indices=["vehicle", "stop"], result_col="load_dur", is_list=False)
         load = TupList(data)\
             .to_dict(indices=["vehicle", "stop"], result_col="load").vapply(sum)
         load_time_pallet = self.instance.data["parameters"]["load_pallet"]
@@ -133,13 +130,10 @@ class Experiment(ExperimentCore):
         return load_duration_err
 
     def check_unload_duration(self, data):
-        dict_unload_duration = TupList(data)\
-            .to_dict(indices=["vehicle", "stop"], result_col="unload_dur")
+        unload_duration = TupList(data)\
+            .to_dict(indices=["vehicle", "stop"], result_col="unload_dur", is_list=False)
         unload = TupList(data)\
             .to_dict(indices=["vehicle", "stop"], result_col="unload").vapply(sum)
-        unload_duration = {}
-        for key, value in dict_unload_duration.items():
-            unload_duration[key] = value[0]
         unload_time_pallet = self.instance.data["parameters"]["unload_pallet"]
         unload_duration_err = {(v, s): unload_duration[v, s] - unload[v, s] * unload_time_pallet
                                for (v, s) in unload_duration.keys()
@@ -148,21 +142,12 @@ class Experiment(ExperimentCore):
         return unload_duration_err
 
     def check_arrival_time(self, data):
-        dict_arrival_time = TupList(data)\
-            .to_dict(indices=["vehicle", "stop"], result_col="arr_time")  # s + 1
-        arrival_time = {}
-        for key, value in dict_arrival_time.items():
-            arrival_time[key] = value[0]
-        dict_departure_time = TupList(data) \
-            .to_dict(indices=["vehicle", "stop"], result_col="dep_time")
-        departure_time = {}
-        for key, value in dict_departure_time.items():
-            departure_time[key] = value[0]
-        dict_trip_dur = TupList(data) \
-            .to_dict(indices=["vehicle", "stop"], result_col="trip_dur")  # s + 1 y [s, s+1]
-        trip_dur = {}
-        for key, value in dict_trip_dur.items():
-            trip_dur[key] = value[0]
+        arrival_time = TupList(data)\
+            .to_dict(indices=["vehicle", "stop"], result_col="arr_time", is_list=False)  # s + 1
+        departure_time = TupList(data) \
+            .to_dict(indices=["vehicle", "stop"], result_col="dep_time", is_list=False)
+        trip_dur = TupList(data) \
+            .to_dict(indices=["vehicle", "stop"], result_col="trip_dur", is_list=False)  # s + 1 y [s, s+1]
         vehicle = list(set([(v[0]) for v in departure_time.keys()]))
         stop = list(set([(i[1]) for i in departure_time.keys() if i[1] != 0]))
         arrival_time_err = {(v, s-1): (arrival_time[v, s] - trip_dur[v, s-1] - departure_time[v, s-1])
@@ -174,26 +159,14 @@ class Experiment(ExperimentCore):
         return arrival_time_err
 
     def check_departure_time(self, data):
-        dict_departure_time = TupList(data)\
-            .to_dict(indices=["vehicle", "stop"], result_col="dep_time")
-        departure_time = {}
-        for key, value in dict_departure_time.items():
-            departure_time[key] = value[0]
-        dict_arrival_time = TupList(data) \
-            .to_dict(indices=["vehicle", "stop"], result_col="arr_time")
-        arrival_time = {}
-        for key, value in dict_arrival_time.items():
-            arrival_time[key] = value[0]
-        dict_load_duration = TupList(data) \
-            .to_dict(indices=["vehicle", "stop"], result_col="load_dur")
-        load_duration = {}
-        for key, value in dict_load_duration.items():
-            load_duration[key] = value[0]
-        dict_unload_duration = TupList(data) \
-            .to_dict(indices=["vehicle", "stop"], result_col="unload_dur")
-        unload_duration = {}
-        for key, value in dict_unload_duration.items():
-            unload_duration[key] = value[0]
+        departure_time = TupList(data)\
+            .to_dict(indices=["vehicle", "stop"], result_col="dep_time", is_list=False)
+        arrival_time = TupList(data) \
+            .to_dict(indices=["vehicle", "stop"], result_col="arr_time", is_list=False)
+        load_duration = TupList(data) \
+            .to_dict(indices=["vehicle", "stop"], result_col="load_dur", is_list=False)
+        unload_duration = TupList(data) \
+            .to_dict(indices=["vehicle", "stop"], result_col="unload_dur", is_list=False)
         dep_time_err = {(v, s): (departure_time[v, s] - arrival_time[v, s]
                                  - load_duration[v, s] - unload_duration[v, s])
                         for (v, s) in departure_time.keys()
@@ -205,11 +178,11 @@ class Experiment(ExperimentCore):
 
     def check_unload_time(self, data):
         unload_time = TupList(data)\
-            .to_dict(indices=["vehicle", "stop"], result_col="unload_time")
+            .to_dict(indices=["vehicle", "stop"], result_col="unload_time", is_list=False)
         arrival_time = TupList(data) \
-            .to_dict(indices=["vehicle", "stop"], result_col="arr_time")
+            .to_dict(indices=["vehicle", "stop"], result_col="arr_time", is_list=False)
         unload_duration = TupList(data) \
-            .to_dict(indices=["vehicle", "stop"], result_col="unload_dur")
+            .to_dict(indices=["vehicle", "stop"], result_col="unload_dur", is_list=False)
         unload_time_err = {(v, s): (unload_time[v, s] - arrival_time[v, s] - unload_duration[v, s])
                            for (v, s) in unload_time.keys()
                            if ((unload_time[v, s] < (arrival_time[v, s] + unload_duration[v, s]) * 0.99) or
@@ -218,13 +191,13 @@ class Experiment(ExperimentCore):
 
     def check_no_simultaneity(self, data):
         arrival_time = TupList(data) \
-            .to_dict(indices=["vehicle", "warehouse"], result_col="arr_time")
+            .to_dict(indices=["vehicle", "warehouse"], result_col="arr_time", is_list=False)
         arrival_time2 = TupList(data) \
-            .to_dict(indices=["vehicle", "warehouse"], result_col="arr_time")
+            .to_dict(indices=["vehicle", "warehouse"], result_col="arr_time", is_list=False)
         departure_time = TupList(data) \
-            .to_dict(indices=["vehicle", "warehouse"], result_col="dep_time")
+            .to_dict(indices=["vehicle", "warehouse"], result_col="dep_time", is_list=False)
         departure_time2 = TupList(data) \
-            .to_dict(indices=["vehicle", "warehouse"], result_col="dep_time")
+            .to_dict(indices=["vehicle", "warehouse"], result_col="dep_time", is_list=False)
         simultaneity_err = {(v, v2, w): 1
                             for (v, w) in arrival_time.keys()
                             for (v2, w2) in arrival_time2.keys()
@@ -234,7 +207,7 @@ class Experiment(ExperimentCore):
 
     def check_correct_ho(self, data):
         actual_time_unload = TupList(data).\
-            to_dict(indices=["comm_or", "comm_dest", "comm_comp"], result_col="unload_time")
+            to_dict(indices=["comm_or", "comm_dest", "comm_comp"], result_col="unload_time", is_list=False)
         opt_time_limit = self.instance.data["parameters"]["opt_time_limit"]
         comm = list(set([(c[0], c[1]) for c in actual_time_unload.keys()]))
         ho_err = {c: actual_time_unload[c + (1,)] - opt_time_limit for c in comm
@@ -243,7 +216,7 @@ class Experiment(ExperimentCore):
 
     def check_correct_hr(self, data):
         actual_time_unload = TupList(data)\
-            .to_dict(indices=["comm_or", "comm_dest", "comm_comp"], result_col="unload_time")
+            .to_dict(indices=["comm_or", "comm_dest", "comm_comp"], result_col="unload_time", is_list=False)
         req_time_limit = self.instance.data["parameters"]["req_time_limit"]
         compulsory_comm = list(set([(c[0], c[1]) for c in actual_time_unload.keys() if c[2] == 1]))
         hr_err = {c: actual_time_unload[c + (1,)] - req_time_limit for c in compulsory_comm
@@ -254,7 +227,7 @@ class Experiment(ExperimentCore):
         load = TupList(data) \
             .to_dict(indices=["vehicle", "stop", "comm_or", "comm_dest", "comm_comp"], result_col="load").vapply(sum)
         gamma = TupList(data) \
-            .to_dict(indices=["vehicle", "stop"], result_col="gamma")
+            .to_dict(indices=["vehicle", "stop"], result_col="gamma", is_list=False)
         veh_cap = self.instance.data["parameters"]["vehicle_capacity"]
         vehicle = list(set([(v[0]) for v in load.keys()]))
         stop = list(set([(i[1]) for i in load.keys()]))
@@ -267,7 +240,7 @@ class Experiment(ExperimentCore):
         unload = TupList(data) \
             .to_dict(indices=["vehicle", "stop", "comm_or", "comm_dest", "comm_comp"], result_col="unload").vapply(sum)
         gamma = TupList(data)\
-            .to_dict(indices=["vehicle", "stop"], result_col="gamma")
+            .to_dict(indices=["vehicle", "stop"], result_col="gamma", is_list=False)
         veh_cap = self.instance.data["parameters"]["vehicle_capacity"]
         vehicle = list(set([(v[0]) for v in unload.keys()]))
         stop = list(set([(i[1]) for i in unload.keys()]))
@@ -282,20 +255,20 @@ class Experiment(ExperimentCore):
         data = self.solution.to_dict()['data']
         print(data)
         return dict(
-            # c2_max_cap=self.check_max_cap(data),
-            # c3_load_req=self.check_load_req(data),
-            # c4_unload_req=self.check_unload_req(data),
-            # c7_load_total=self.check_load(data),
-            # c8_zero_unload_first_stop=self.check_zero_unload(data),
-            # c9_max_load=self.check_max_load(data),
-            # c10_max_unload=self.check_max_unload(data),
-            # c16_different_warehouse_for_stop=self.check_different_warehouse(data),
-            # c18_load_duration=self.check_load_duration(data),
-            # c19_unload_duration=self.check_unload_duration(data),
-            # # c20_arrival_time=self.check_arrival_time(data), # error al leer trip_duration
-            # c21_departure_time=self.check_departure_time(data),
-            # c22_unload_time=self.check_unload_time(data),
-            # c23y24_no_simultaneity=self.check_no_simultaneity(data),
+            c2_max_cap=self.check_max_cap(data),
+            c3_load_req=self.check_load_req(data),
+            c4_unload_req=self.check_unload_req(data),
+            c7_load_total=self.check_load(data),
+            c8_zero_unload_first_stop=self.check_zero_unload(data),
+            c9_max_load=self.check_max_load(data),
+            c10_max_unload=self.check_max_unload(data),
+            c16_different_warehouse_for_stop=self.check_different_warehouse(data),
+            c18_load_duration=self.check_load_duration(data),
+            c19_unload_duration=self.check_unload_duration(data),
+            c20_arrival_time=self.check_arrival_time(data),
+            c21_departure_time=self.check_departure_time(data),
+            c22_unload_time=self.check_unload_time(data),
+            c23y24_no_simultaneity=self.check_no_simultaneity(data),
             # c25_correct_ho=self.check_correct_ho(data),
             # c26_correct_hr=self.check_correct_hr(data),
             # c27_load_time_limit=self.check_load_time_limit(data),

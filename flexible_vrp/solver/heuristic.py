@@ -128,13 +128,18 @@ class Heuristic(Experiment):
         k = self.veh_cap * (self.load_time + self.unload_time) * 2
         alpha = 1/(self.veh_cap * 2)
         beta = self.average_time_d * 2 + k
-        max_attractive = None
-        for clave, valor in self.tree.items():
-            if max_attractive is None or (valor[0] * alpha + beta / valor[1]) > max_attractive:
-                max_attractive = (valor[0] * alpha + valor[1] * beta)
-        # To-Do: cambiar este método por el método MonteCarlo
-        self.move = random.choice([clave for clave, valor in self.tree.items()
-                                   if (valor[0] * alpha + valor[1] * beta) == max_attractive])[:2]
+        # Diccionario que recoge el atractivo de cada movimiento
+        dict_attractive = {clave: valor[0] * alpha + beta / valor[1] for clave, valor in self.tree.items()}
+        dict_sorted_attractive = {clave: valor for clave, valor in sorted(dict_attractive.items(),
+                                                                          key=lambda item: item[1], reverse=True)}
+        # Progresión geométrica para asignar probabilidades
+        n = len(self.tree)
+        # Todo: estimar r y ¿definirlo en excel?
+        r = 0.5
+        a1 = (r - 1) / ((r**n) - 1)
+        formula_an = lambda x: a1 * (r**(x - 1))
+        list_probabilities = [a1 if i == 0 else formula_an(i) for i in range(1, n+1)]
+        self.move = random.choices(list(dict_sorted_attractive.keys()), list_probabilities)[0]
         return self.move
 
     def update(self):

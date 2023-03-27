@@ -152,7 +152,7 @@ class BasicMip(Experiment):
             if (v, s) in warehouses_visited.keys()}
 
         for v in model_instance.sVehicles:
-            trip_durations[v, len(model_instance.sStops) - 1] = "-"
+            trip_durations[v, len(model_instance.sStops) - 1] = 0
 
         data_solution = TupList([[v, s, w, c[0], c[1], c[2], c[3],
                          model_instance.vQuantityAtArrival[v, s, c].value,

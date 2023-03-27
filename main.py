@@ -7,7 +7,7 @@ from analysis_tools.read_tools import read_input_data
 config = {
     "solver": "basic_mip",
     "solver_name": "gurobi",
-    "solver_config": {"TimeLimit": 600, "gap": 0},
+    "solver_config": {"TimeLimit": 120, "gap": 0},
 }
 
 # config = {
@@ -17,11 +17,11 @@ config = {
 
 # data = load_json("./data/simple_instance.json")
 # file_path = "data/dia_1.xlsx"
-file_path = "data/dia_2.xlsx"
+# file_path = "data/dia_2.xlsx"
 # file_path = "data/inst_0.xlsx"
 # file_path = "data/inst_1.xlsx"
 # file_path = "data/inst_2.xlsx"
-# file_path = "data/inst_3.xlsx"
+file_path = "data/inst_3.xlsx"
 # file_path = "data/inst_4.xlsx"
 # file_path = "data/datos_min.xlsx"
 # file_path = "data/datos_1_comm.xlsx"

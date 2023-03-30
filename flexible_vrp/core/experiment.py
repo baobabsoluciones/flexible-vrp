@@ -155,8 +155,6 @@ class Experiment(ExperimentCore):
                             if ((v, s) in arrival_time.keys() and (v, s) in departure_time.keys() and
                                 (v, s) in trip_dur.keys() and
                                 arrival_time[v, s] < 0.99 * (trip_dur[v, s - 1] + departure_time[v, s - 1]))}
-                                # (arrival_time[v, s] < 0.99 * (trip_dur[v, s-1] + departure_time[v, s-1])) or
-                                # (arrival_time[v, s] > 1.01 * (trip_dur[v, s-1] + departure_time[v, s-1])))}
         return arrival_time_err
 
     def check_departure_time(self, data):
@@ -210,9 +208,6 @@ class Experiment(ExperimentCore):
         actual_time_unload = TupList(data).\
             to_dict(indices=["comm_or", "comm_dest", "comm_comp"], result_col="unload_time", is_list=False)
         opt_time_limit = self.instance.data["parameters"]["opt_time_limit"]
-        # comm = list(set([(c[0], c[1]) for c in actual_time_unload.keys()]))
-        # ho_err = {c: actual_time_unload[c + (1,)] - opt_time_limit for c in comm
-        #           if actual_time_unload[c + (1,)] > 1.001 * opt_time_limit}
         ho_err = {c: actual_time_unload[c] - opt_time_limit for c in actual_time_unload.keys()
                   if actual_time_unload[c] > 1.001 * opt_time_limit}
         return ho_err
@@ -234,9 +229,6 @@ class Experiment(ExperimentCore):
         veh_cap = self.instance.data["parameters"]["vehicle_capacity"]
         vehicle = list(set([(v[0]) for v in load.keys()]))
         stop = list(set([(i[1]) for i in load.keys()]))
-        # compulsory_comm = list(set([(c[2], c[3]) for c in load.keys() if c[4] == 1]))
-        # load_time_limit_err = {(v, s, c): load[(v, s) + c + (1,)] - (1 - gamma[v, s]) * veh_cap for c in compulsory_comm
-        #                        for v in vehicle for s in stop if load[(v, s) + c + (1,)] > (1 - gamma[v, s]) * veh_cap}
         compulsory_comm = list(set([(c[2], c[3], c[4]) for c in load.keys()]))
         load_time_limit_err = {(v, s, c): load[(v, s) + c] - (1 - gamma[v, s]) * veh_cap
                                for c in compulsory_comm for v in vehicle for s in stop
@@ -252,10 +244,6 @@ class Experiment(ExperimentCore):
         veh_cap = self.instance.data["parameters"]["vehicle_capacity"]
         vehicle = list(set([(v[0]) for v in unload.keys()]))
         stop = list(set([(i[1]) for i in unload.keys()]))
-        # compulsory_comm = list(set([(c[2], c[3]) for c in unload.keys() if c[4] == 1]))
-        # unload_time_limit_err = {(v, s, c): unload[(v, s) + c + (1,)] - (1 - gamma[v, s]) * veh_cap
-        #                          for c in compulsory_comm for v in vehicle for s in stop
-        #                          if unload[(v, s) + c + (1,)] > (1 - gamma[v, s]) * veh_cap}
         compulsory_comm = list(set([(c[2], c[3], c[4]) for c in unload.keys()]))
         unload_time_limit_err = {(v, s, c): unload[(v, s) + c] - (1 - gamma[v, s]) * veh_cap
                                  for c in compulsory_comm for v in vehicle for s in stop

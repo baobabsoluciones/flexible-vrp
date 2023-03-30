@@ -64,6 +64,8 @@ class Heuristic(Experiment):
         return self.sol
 
     def check_if_stop(self):
+        # Parada (stop = 1) si todos los vehículos superan el límite horario, o si no quedan comm_req que entregar.
+        # todo: parar si no quedan commodities opcionales
         time_limit_over = [v for v in self.vehicles if self.current_time[v] > self.req_time_limit]
         stop = 0
         if self.comm_req.values() == 0:
@@ -76,7 +78,8 @@ class Heuristic(Experiment):
         return stop
 
     def explore(self, w2=None):
-        # carga + viaje + descarga + carga + viaje + descarga
+        # Exploración a 2 saltos vista
+        # Valor de self.tree = (Comm_req no entregados a 2 saltos vista, tiempo (carga + viaje + descarga + carga + viaje + descarga))
         self.tree = {(v, w2, w3): (self.comm_req[self.current_warehouse[v], w2] + self.comm_req[w2, w3],
                                    (self.comm_req[self.current_warehouse[v], w2] * self.load_time +
                                    self.trip_duration[self.current_warehouse[v], w2] +
@@ -91,7 +94,7 @@ class Heuristic(Experiment):
                          and (w2, w3) in self.comm_req.keys()
                          and self.comm_req[w2, w3] > 0)
                      }
-
+        # Exploración a 1 salto vista
         for v in self.vehicles:
             for w2 in self.warehouses:
                 a = 0
@@ -128,17 +131,17 @@ class Heuristic(Experiment):
         k = self.veh_cap * (self.load_time + self.unload_time) * 2
         alpha = 1/(self.veh_cap * 2)
         beta = self.average_time_d * 2 + k
-        # Diccionario que recoge el atractivo de cada movimiento
+        # dict_attractive: diccionario que recoge el atractivo de cada movimiento
         dict_attractive = {clave: valor[0] * alpha + beta / valor[1] for clave, valor in self.tree.items()}
         dict_sorted_attractive = {clave: valor for clave, valor in sorted(dict_attractive.items(),
                                                                           key=lambda item: item[1], reverse=True)}
         # Progresión geométrica para asignar probabilidades
-        n = len(self.tree)
+        n = len(self.tree)  # n: número de términos de la progresión
         # Todo: estimar r y ¿definirlo en excel?
-        r = 0.5
-        a1 = (r - 1) / ((r**n) - 1)
-        formula_an = lambda x: a1 * (r**(x - 1))
-        list_probabilities = [a1 if i == 0 else formula_an(i) for i in range(1, n+1)]
+        r = 0.5  # r: razón
+        a1 = (r - 1) / ((r**n) - 1)  # a1: primer término de la progresión, siendo la suma Sn = 1
+        formula_an = lambda x: a1 * (r**(x - 1))  # an: probabilidad asignada a cada término
+        list_probabilities = [a1 if i == 0 else formula_an(i) for i in range(1, n+1)]  # lista [a1,a2,...,an]
         self.move = random.choices(list(dict_sorted_attractive.keys()), list_probabilities)[0]
         return self.move
 
@@ -148,7 +151,7 @@ class Heuristic(Experiment):
         w2 = self.move[1]
         cant = self.comm_req[w, w2]
         q = min(cant, self.veh_cap)
-        t = (q * self.load_time + self.trip_duration[w, w2] + q * self.unload_time)
+        t = (q * self.load_time + self.trip_duration[w, w2] + q * self.unload_time)  # todo: tiempo holgura
         # update route selected
         self.comm_req[w, w2] -= q
         if (q!=0):

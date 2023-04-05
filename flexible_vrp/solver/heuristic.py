@@ -10,10 +10,10 @@ class Heuristic(Experiment):
         super().__init__(instance, solution)
 
     def prepare_data(self):
-        origins = set([c["location1"] for c in self.instance.data["trip_durations"]])
-        destinations = set([c["location2"] for c in self.instance.data["trip_durations"]])
+        self.origins = set([c["origin"] for c in self.instance.data["commodities"]])
+        destinations = set([c["destination"] for c in self.instance.data["commodities"]])
         # Getting a list from the union of destinations and origins
-        self.warehouses = list(origins.union(destinations))
+        self.warehouses = list(self.origins.union(destinations))
         self.vehicles = [v for v in range(int(self.instance.data["parameters"]["fleet_size"]))]
         self.trip_duration = {(x["location1"], x["location2"]): x["time"] for x in self.instance.data["trip_durations"]}
         self.veh_cap = self.instance.data["parameters"]["vehicle_capacity"]
@@ -49,8 +49,8 @@ class Heuristic(Experiment):
                                 for c in self.instance.data["commodities"] if c["required"]}
         self.comm_opt_loaded = {(c["origin"], c["destination"]): 0
                                 for c in self.instance.data["commodities"] if not c["required"]}
-        possible_warehouses = [w for w in self.warehouses if any([(w, w2) for w2 in self.warehouses if
-                                                                  (w, w2) in self.comm_req.keys()])]
+        possible_warehouses = [w for w in self.origins if any([(w, w2) for w2 in self.warehouses if
+                                                                  (w, w2) in self.comm_req_loaded.keys()])]
         self.current_warehouse = {v: random.choice(possible_warehouses) for v in self.vehicles}
         self.current_time = {v: 0 for v in self.vehicles}  # "t" + str(v)
         self.stops = {v: 0 for v in self.vehicles}
@@ -78,52 +78,63 @@ class Heuristic(Experiment):
         return stop
 
     def explore(self, w2=None):
-        # Exploración a 2 saltos vista
-        # Valor de self.tree = (Comm_req no entregados a 2 saltos vista, tiempo (carga + viaje + descarga + carga + viaje + descarga))
-        self.tree = {(v, w2, w3): (self.comm_req[self.current_warehouse[v], w2] + self.comm_req[w2, w3],
+        # Exploración a 3 saltos vista
+        self.tree = {(v, w2, w3): (min(self.veh_cap, self.comm_req[self.current_warehouse[v], w2])
+                                   + min(self.veh_cap, self.comm_req[w2, w3])
+                                   + min(self.veh_cap - max(self.comm_req[self.current_warehouse[v], w2],
+                                                            self.comm_req[w2, w3]),
+                                         self.comm_req[self.current_warehouse[v], w3]),
                                    (self.comm_req[self.current_warehouse[v], w2] * self.load_time +
-                                   self.trip_duration[self.current_warehouse[v], w2] +
-                                   self.comm_req[self.current_warehouse[v], w2] * self.unload_time +
-                                   self.comm_req[w2, w3] * self.load_time +
-                                   self.trip_duration[self.current_warehouse[v], w2] +
-                                   self.comm_req[w2, w3] * self.unload_time))
+                                    self.trip_duration[self.current_warehouse[v], w2] +
+                                    self.comm_req[self.current_warehouse[v], w2] * self.unload_time +
+                                    self.comm_req[w2, w3] * self.load_time +
+                                    self.trip_duration[self.current_warehouse[v], w2] +
+                                    self.comm_req[w2, w3] * self.unload_time +
+                                    self.comm_req[self.current_warehouse[v], w3] * self.load_time +
+                                    self.comm_req[self.current_warehouse[v], w3] * self.unload_time))
                      for v in self.vehicles for w2 in self.warehouses for w3 in self.warehouses
-                     if (w2 != self.current_warehouse[v]
+                     if ((self.current_warehouse[v], w3) in self.comm_req.keys()
+                         and w2 != self.current_warehouse[v]
                          and (self.current_warehouse[v], w2) in self.comm_req.keys()
                          and w3 != w2
-                         and (w2, w3) in self.comm_req.keys()
-                         and self.comm_req[w2, w3] > 0)
+                         and self.comm_req[w2, w3] > 0
+                         and max(self.comm_req[self.current_warehouse[v], w2], self.comm_req[w2, w3]) < self.veh_cap)
                      }
+        # Exploración a 2 saltos vista
+        # Valor de self.tree = (Comm_req no entregados a 2 saltos vista, tiempo (carga + viaje + descarga + carga + viaje + descarga))
+        self.tree.update({(v, w2, w3): ((min(self.veh_cap, self.comm_req[self.current_warehouse[v], w2])
+                                   + min(self.veh_cap, self.comm_req[w2, w3]),
+                                   (self.comm_req[self.current_warehouse[v], w2] * self.load_time +
+                                    self.trip_duration[self.current_warehouse[v], w2] +
+                                    self.comm_req[self.current_warehouse[v], w2] * self.unload_time +
+                                    self.comm_req[w2, w3] * self.load_time +
+                                    self.trip_duration[self.current_warehouse[v], w2] +
+                                    self.comm_req[w2, w3] * self.unload_time)))
+                     for v in self.vehicles for w2 in self.warehouses for w3 in self.warehouses
+                     if (not((v, w2, w3) in self.tree.keys())
+                         and (w2 != self.current_warehouse[v]
+                         and (self.current_warehouse[v], w2) in self.comm_req.keys()
+                         and w3 != w2
+                         and self.comm_req[w2, w3] > 0))
+                     })
+
         # Exploración a 1 salto vista
-        for v in self.vehicles:
-            for w2 in self.warehouses:
-                a = 0
-                for w3 in self.warehouses:
-                    if (v, w2, w3) in self.tree.keys():
-                        a += 1
-                if (a == 0
-                        and w2 != self.current_warehouse[v]
-                        and (self.current_warehouse[v], w2) in self.comm_req.keys()
-                        and self.comm_req[self.current_warehouse[v], w2] > 0):
-                    self.tree[(v, w2)] = (self.comm_req[self.current_warehouse[v], w2],
-                                          (self.comm_req[self.current_warehouse[v], w2] * self.load_time +
-                                           self.trip_duration[self.current_warehouse[v], w2] +
-                                           self.comm_req[self.current_warehouse[v], w2] * self.unload_time
-                                           ))
-        # self.tree.update({(v, w2): (self.comm_req[self.current_warehouse[v], w2],
-        #                             (self.comm_req[self.current_warehouse[v], w2] * self.load_time +
-        #                              self.trip_duration[self.current_warehouse[v], w2] +
-        #                              self.comm_req[self.current_warehouse[v], w2] * self.unload_time))
-        #                   for v in self.vehicles
-        #                   for w2 in self.warehouses
-        #                   if (w2 != self.current_warehouse[v]
-        #                       and (self.current_warehouse[v], w2) in self.comm_req.keys()
-        #                       and any((v, w2, w3) in self.tree for w3 in self.warehouses)
-        #                       or (self.comm_req[w2, w3] > 0
-        #                           and (self.current_warehouse[v], w2) in self.comm_req.keys()
-        #                           and w3 != w2
-        #                           and (w2, w3) in self.comm_req.keys()))
-        #                   })
+        self.tree.update({(v, w2): (min(self.veh_cap, self.comm_req[self.current_warehouse[v], w2]),
+                                    (self.comm_req[self.current_warehouse[v], w2] * self.load_time +
+                                     self.trip_duration[self.current_warehouse[v], w2] +
+                                     self.comm_req[self.current_warehouse[v], w2] * self.unload_time))
+                          for v in self.vehicles
+                          for w2 in self.warehouses
+                          for w3 in self.warehouses
+                          if (w2 != self.current_warehouse[v]
+                              and (self.current_warehouse[v], w2) in self.comm_req.keys()
+                              and not any((v, w2, w3) in self.tree.keys() for w3 in self.warehouses)
+                              and self.comm_req[self.current_warehouse[v], w2] > 0
+                              and (self.current_warehouse[v], w2) in self.comm_req.keys()
+                              and w3 != w2
+                              and (w2, w3) in self.comm_req.keys())
+                          })
+
         return self.tree
 
     def select_move(self):

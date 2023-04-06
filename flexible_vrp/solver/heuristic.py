@@ -55,6 +55,7 @@ class Heuristic(Experiment):
         self.current_time = {v: 0 for v in self.vehicles}  # "t" + str(v)
         self.stops = {v: 0 for v in self.vehicles}
         self.sol = {(v, self.current_warehouse[v], self.stops[v]): (0, self.current_time[v]) for v in self.vehicles}
+        self.dict_occupation = {v: [] for v in self.warehouses}
         stop = False
         while not stop:
             self.explore()
@@ -163,6 +164,9 @@ class Heuristic(Experiment):
         cant = self.comm_req[w, w2]
         q = min(cant, self.veh_cap)
         t = (q * self.load_time + self.trip_duration[w, w2] + q * self.unload_time)  # todo: tiempo holgura
+        # update warehouse occupation time
+        self.dict_occupation[w].append([self.current_time[v], self.current_time[v] + q * self.load_time])
+        self.dict_occupation[w2].append([self.current_time[v] + q * self.load_time + self.trip_duration[w, w2], self.current_time[v] + t])
         # update route selected
         self.comm_req[w, w2] -= q
         if (q!=0):
@@ -171,5 +175,18 @@ class Heuristic(Experiment):
         self.current_time[v] += t
         self.stops[v] += 1
         self.sol[v, w2, self.stops[v]] = (q, t)
+        previous_warehouse = {key[1]: value for key, value in self.sol.items()
+                              if self.stops[v] >= 2 and key[0] == v and key[2] == self.stops[v] - 2}
+        # self.sol.update({(v, w2, self.stops[v] - 2):
+        #                      (min(self.veh_cap - max(self.sol[(v, previous_warehouse.keys(), self.stops[v] - 2)][0],
+        #                                              self.sol[(v, self.current_warehouse[v], self.stops[v] - 1)][0]),
+        #                           self.comm_req[(previous_warehouse.keys(), w2)]), t)
+        #                      if (self.stops[v] >= 2
+        #                          and self.comm_req[(previous_warehouse.keys(), w2)] > 0
+        #                          and (v, previous_warehouse.keys(), self.stops[v] - 2) in self.sol.keys()
+        #                          and (v, self.current_warehouse[v], self.stops[v] - 1) in self.sol.keys()
+        #                          and self.sol[(v, previous_warehouse.keys(), self.stops[v] - 2)][0] < self.veh_cap
+        #                          and self.sol[(v, self.current_warehouse[v], self.stops[v] - 1)][0] < self.veh_cap)
+        #                  })
         self.current_warehouse[v] = w2
         return self.sol

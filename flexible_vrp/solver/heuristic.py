@@ -69,7 +69,7 @@ class Heuristic(Experiment):
         # todo: parar si no quedan commodities opcionales
         time_limit_over = [v for v in self.vehicles if self.current_time[v] > self.req_time_limit]
         stop = 0
-        if self.comm_req.values() == 0:
+        if all(valor == 0 for valor in self.comm_req.values()):
             stop = 1
         if len(time_limit_over) == len(self.vehicles):
             stop = 1
@@ -135,7 +135,6 @@ class Heuristic(Experiment):
                               and w3 != w2
                               and (w2, w3) in self.comm_req.keys())
                           })
-
         return self.tree
 
     def select_move(self):
@@ -164,17 +163,37 @@ class Heuristic(Experiment):
         cant = self.comm_req[w, w2]
         q = min(cant, self.veh_cap)
         t = (q * self.load_time + self.trip_duration[w, w2] + q * self.unload_time)  # todo: tiempo holgura
-        # update warehouse occupation time
-        self.dict_occupation[w].append([self.current_time[v], self.current_time[v] + q * self.load_time])
-        self.dict_occupation[w2].append([self.current_time[v] + q * self.load_time + self.trip_duration[w, w2], self.current_time[v] + t])
-        # update route selected
-        self.comm_req[w, w2] -= q
-        if (q!=0):
-            self.comm_req_loaded[w, w2] += q
-        # self.comm_req_loaded[w, w2] += q if q != 0 else None
-        self.current_time[v] += t
-        self.stops[v] += 1
-        self.sol[v, w2, self.stops[v]] = (q, t)
+        intervalo_deseado_O = [self.current_time[v], self.current_time[v] + q * self.load_time]
+        intervalo_deseado_D = [self.current_time[v] + q * self.load_time + self.trip_duration[w, w2], self.current_time[v] + t]
+        ocupado = False
+        #Comprobación de intersección entre los intervalos
+        for intervalo in self.dict_occupation[w]:
+            if intervalo[0] < intervalo_deseado_O[0] < intervalo[1] or intervalo_deseado_O[0] < intervalo[0] < \
+                    intervalo_deseado_O[1]:
+                ocupado = True
+                break
+        for intervalo in self.dict_occupation[w2]:
+            if intervalo[0] < intervalo_deseado_D[0] < intervalo[1] or intervalo_deseado_D[0] < intervalo[0] < \
+                    intervalo_deseado_D[1]:
+                ocupado = True
+                break
+        if ocupado == False:
+            # update warehouse occupation time
+            self.dict_occupation[w].append([self.current_time[v], self.current_time[v] + q * self.load_time])
+            self.dict_occupation[w2].append([self.current_time[v] + q * self.load_time + self.trip_duration[w, w2], self.current_time[v] + t])
+            self.dict_occupation = {clave: sorted(valores, key=lambda valor: valor[0]) for clave, valores in
+                                    self.dict_occupation.items()}
+            # update route selected
+            self.comm_req[w, w2] -= q
+            if (q!=0):
+                self.comm_req_loaded[w, w2] += q
+            # self.comm_req_loaded[w, w2] += q if q != 0 else None
+            self.current_time[v] += t
+            self.stops[v] += 1
+            self.sol[v, w2, self.stops[v]] = (q, t)
+            self.current_warehouse[v] = w2
+
+        # "update 3 salto"
         previous_warehouse = {key[1]: value for key, value in self.sol.items()
                               if self.stops[v] >= 2 and key[0] == v and key[2] == self.stops[v] - 2}
         # self.sol.update({(v, w2, self.stops[v] - 2):
@@ -188,5 +207,5 @@ class Heuristic(Experiment):
         #                          and self.sol[(v, previous_warehouse.keys(), self.stops[v] - 2)][0] < self.veh_cap
         #                          and self.sol[(v, self.current_warehouse[v], self.stops[v] - 1)][0] < self.veh_cap)
         #                  })
-        self.current_warehouse[v] = w2
+
         return self.sol

@@ -191,9 +191,11 @@ class Heuristic(Experiment):
             self.stops[v] += 1
             self.sol[v, w2, self.stops[v]] = (q, t)
             self.current_warehouse[v] = w2
-        # "update 3 salto"
-        # previous_warehouse = {key[1]: value for key, value in self.sol.items()
-        #                       if self.stops[v] >= 2 and key[0] == v and key[2] == self.stops[v] - 2}
+        # " UPDATE 3º SALTO"
+        previous_warehouse = {key[1]: value for key, value in self.sol.items()
+                              if self.stops[v] >= 2 and key[0] == v and key[2] == self.stops[v] - 2}
+        # todo: update tiempo
+        # todo: conflictos saltos grandes (terceros)
         # self.sol.update({(v, w2, self.stops[v] - 2):
         #                      (min(self.veh_cap - max(self.sol[(v, previous_warehouse.keys(), self.stops[v] - 2)][0],
         #                                              self.sol[(v, self.current_warehouse[v], self.stops[v] - 1)][0]),

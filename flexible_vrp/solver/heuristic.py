@@ -53,7 +53,9 @@ class Heuristic(Experiment):
         self.current_warehouse = {v: random.choice(possible_warehouses) for v in self.vehicles}
         self.current_time = {v: 0 for v in self.vehicles}  # "t" + str(v)
         self.stops = {v: 0 for v in self.vehicles}
-        self.dict_occupation = {v: [] for v in self.warehouses}
+        self.dict_occupation_W = {w: [] for w in self.warehouses}
+        self.dict_occupation_V = {v: [] for v in self.vehicles}
+        self.dict_empty_W = {w: [(0, 480)] for w in self.warehouses}
         self.sol = {(v, self.current_warehouse[v], self.stops[v]): (0, self.current_time[v]) for v in self.vehicles}
         stop = False
         while not stop:
@@ -78,6 +80,7 @@ class Heuristic(Experiment):
 
     def explore(self, w2=None):
         # Exploración a 3 saltos vista
+
         self.tree = {(v, w2, w3): (min(self.veh_cap, self.comm_req[self.current_warehouse[v], w2])
                                    + min(self.veh_cap, self.comm_req[w2, w3])
                                    + min(self.veh_cap - max(self.comm_req[self.current_warehouse[v], w2],
@@ -115,7 +118,9 @@ class Heuristic(Experiment):
                               and (self.current_warehouse[v], w2) in self.comm_req.keys()
                               and w3 != w2
                               and self.comm_req[w2, w3] > 0)
-                     })
+                          })
+
+        # [i+2 if i > 3 else i + 3 for i in range(10)]  # if else antes del for
 
         # Exploración a 1 salto vista
         self.tree.update({(v, w2): (min(self.veh_cap, self.comm_req[self.current_warehouse[v], w2]),
@@ -161,39 +166,62 @@ class Heuristic(Experiment):
         w2 = self.move[1]
         cant = self.comm_req[w, w2]
         q = min(cant, self.veh_cap)
-        t = (q * self.load_time + self.trip_duration[w, w2] + q * self.unload_time)  # todo: tiempo holgura
+        t_arrival = self.current_time[v] + self.trip_duration[w, w2]
+        t_load = q * self.load_time
+        t_max_load = self.veh_cap * self.load_time
+        t_unload = q * self.unload_time
+        t = self.current_time[v] + self.trip_duration[w, w2] + t_unload + t_max_load  # t_departure
+
         # SIMULTANEITY VEH
         # Ventanas temporales del movimiento elegido para origen y destino
-        selected_interval_o = [self.current_time[v], self.current_time[v] + q * self.load_time]
-        selected_interval_d = [self.current_time[v] + q * self.load_time + self.trip_duration[w, w2],
-                               self.current_time[v] + t]
-        # Comprobación de intersección entre los
+        if self.stops[v] != 0:
+            selected_interval = [t_arrival, t]
+        else:
+            first_interval = [self.current_time[v], self.current_time[v] + t_load]
+            selected_interval = [t_load + t_arrival, t_load + t]
+
+        # Comprobación de intersección entre los intervalos
         busy = False
-        busy = any((interval[0] < selected_interval_o[0] < interval[1] or selected_interval_o[0] < interval[0] <
-                    selected_interval_o[1])
-                   for interval in self.dict_occupation[w]) or \
-               any((interval[0] < selected_interval_d[0] < interval[1] or selected_interval_d[0] < interval[0] <
-                    selected_interval_d[1])
-                   for interval in self.dict_occupation[w2])
+        if self.stops[v] != 0:
+            busy = any((interval[2] < selected_interval[0] < interval[3] or selected_interval[0] < interval[2] <
+                        selected_interval[1]) for interval in self.dict_occupation_W[w2])
+        else:
+            busy = any((interval[2] < first_interval[0] < interval[3] or first_interval[0] < interval[2] <
+                        first_interval[1]) for interval in self.dict_occupation_W[w]) or \
+                   any((interval[2] < selected_interval[0] < interval[3] or selected_interval[0] < interval[2] <
+                        selected_interval[1]) for interval in self.dict_occupation_W[w2])
+
         if not busy:
             # Update warehouse occupation time
-            self.dict_occupation[w].append([self.current_time[v], self.current_time[v] + q * self.load_time])
-            self.dict_occupation[w2].append([self.current_time[v] + q * self.load_time + self.trip_duration[w, w2],
-                                             self.current_time[v] + t])
-            self.dict_occupation = {clave: sorted(values, key=lambda x: x[0]) for clave, values in
-                                    self.dict_occupation.items()}
+            if self.stops[v] != 0:
+                self.dict_occupation_W[w2].append((v, self.stops[v] + 1, t_arrival, t))
+            else:
+                self.dict_occupation_W[w].append((v, self.stops[v], self.current_time[v], self.current_time[v] + t_load))
+                self.dict_occupation_W[w2].append((v, self.stops[v] + 1, t_load + t_arrival, t_load + t))
+            self.dict_occupation_W = {clave: sorted(values, key=lambda x: x[2]) for clave, values in
+                                      self.dict_occupation_W.items()}
+            # dict_empty_W guarda el inicio de una ventana temporal libre y su duración: [t inicio vacio, duracion]
+            self.dict_empty_W = {w: [(tupla[i][3], tupla[i + 1][2] - tupla[i][3]) if i < len(tupla) - 1
+                                     else (tupla[i][3], 480 - tupla[i][3])
+                                     for i in range(len(tupla))] for w, tupla in self.dict_occupation_W.items()}
+
             # Update route selected
             self.comm_req[w, w2] -= q
             if q != 0:
                 self.comm_req_loaded[w, w2] += q
             # self.comm_req_loaded[w, w2] += q if q != 0 else None
-            self.current_time[v] += t
+            if self.stops[v] != 0:
+                self.current_time[v] += t
+            else:
+                self.current_time[v] = t + t_load
             self.stops[v] += 1
             self.sol[v, w2, self.stops[v]] = (q, t)
             self.current_warehouse[v] = w2
+        # todo: if busy
+
         # " UPDATE 3º SALTO"
-        previous_warehouse = {key[1]: value for key, value in self.sol.items()
-                              if self.stops[v] >= 2 and key[0] == v and key[2] == self.stops[v] - 2}
+        # previous_warehouse = {key[1]: value for key, value in self.sol.items()
+        #                       if self.stops[v] >= 2 and key[0] == v and key[2] == self.stops[v] - 2}
         # todo: update tiempo
         # todo: conflictos saltos grandes (terceros)
         # self.sol.update({(v, w2, self.stops[v] - 2):

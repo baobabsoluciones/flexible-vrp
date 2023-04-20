@@ -80,6 +80,14 @@ class Heuristic(Experiment):
 
     def explore(self, w2=None):
         # Exploración a 3 saltos vista
+        for (v,w2,w3) in [(v,w2,w3) for v in self.vehicles for w2 in self.warehouses for w3 in self.warehouses
+                          if [(self.current_warehouse[v], w3) in self.comm_req.keys()
+                              and w2 != self.current_warehouse[v]
+                              and (self.current_warehouse[v], w2) in self.comm_req.keys()
+                              and w3 != w2
+                              and self.comm_req[w2, w3] > 0
+                              and max(self.comm_req[self.current_warehouse[v], w2],
+                                      self.comm_req[w2, w3]) < self.veh_cap]]:
 
         self.tree = {(v, w2, w3): (min(self.veh_cap, self.comm_req[self.current_warehouse[v], w2])
                                    + min(self.veh_cap, self.comm_req[w2, w3])

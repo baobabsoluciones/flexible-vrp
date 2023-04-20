@@ -79,89 +79,31 @@ class Heuristic(Experiment):
         return stop
 
     def explore(self, w2=None):
-        # Exploración a 3 saltos vista
+        self.tree = {}
         for (v, w2, w3) in [(v, w2, w3) for v in self.vehicles for w2 in self.warehouses for w3 in self.warehouses
-                            if (w3 != w2
-                                and w2 != self.current_warehouse[v]
-                                and self.comm_req[w2, w3] > 0)]:
+                            if (w3 != w2 and w2 != self.current_warehouse[v])]:
             # Estructura: self.tree{(v,w2,w3): (q1+q2+q3,t1+t2+t3+te)}
             q1 = min(self.veh_cap, self.comm_req[self.current_warehouse[v], w2])
             q2 = min(self.veh_cap, self.comm_req[w2, w3])
             q3 = 0
-            t1 = self.comm_req[self.current_warehouse[v], w2] * self.load_time + \
-                self.trip_duration[self.current_warehouse[v], w2] + \
-                self.comm_req[self.current_warehouse[v], w2] * self.unload_time
-            t2 = self.comm_req[w2, w3] * self.load_time + \
-                self.trip_duration[self.current_warehouse[v], w2] + \
-                self.comm_req[w2, w3] * self.unload_time
+            t1 = q1 * (self.load_time + self.unload_time) + self.trip_duration[self.current_warehouse[v], w2]
+            t2 = q2 * (self.load_time + self.unload_time) + self.trip_duration[self.current_warehouse[v], w2]
             t3 = 0
             te = 0
-            # Si existe el 3º salto:
-            if (self.comm_req[self.current_warehouse[v], w3] > 0
-                    and max(self.comm_req[self.current_warehouse[v], w2], self.comm_req[w2, w3]) < self.veh_cap):
-                q3 = min(self.veh_cap - max(q1, q2), self.comm_req[self.current_warehouse[v], w3])
-                t3 = self.comm_req[self.current_warehouse[v], w3] * self.load_time + \
-                    self.comm_req[self.current_warehouse[v], w3] * self.unload_time
-            self.tree[(v, w2, w3)] = (q1 + q2 + q3, t1 + t2 + t3 + te)
-
-        # # Exploración a 3 saltos vista
-        # self.tree = {(v, w2, w3): (min(self.veh_cap, self.comm_req[self.current_warehouse[v], w2])
-        #                            + min(self.veh_cap, self.comm_req[w2, w3])
-        #                            + min(self.veh_cap - max(self.comm_req[self.current_warehouse[v], w2],
-        #                                                     self.comm_req[w2, w3]),
-        #                                  self.comm_req[self.current_warehouse[v], w3]),
-        #                            (self.comm_req[self.current_warehouse[v], w2] * self.load_time +
-        #                             self.trip_duration[self.current_warehouse[v], w2] +
-        #                             self.comm_req[self.current_warehouse[v], w2] * self.unload_time +
-        #                             self.comm_req[w2, w3] * self.load_time +
-        #                             self.trip_duration[self.current_warehouse[v], w2] +
-        #                             self.comm_req[w2, w3] * self.unload_time +
-        #                             self.comm_req[self.current_warehouse[v], w3] * self.load_time +
-        #                             self.comm_req[self.current_warehouse[v], w3] * self.unload_time))
-        #              for v in self.vehicles for w2 in self.warehouses for w3 in self.warehouses
-        #              if ((self.current_warehouse[v], w3) in self.comm_req.keys()
-        #                  and w2 != self.current_warehouse[v]
-        #                  and (self.current_warehouse[v], w2) in self.comm_req.keys()
-        #                  and w3 != w2
-        #                  and self.comm_req[w2, w3] > 0
-        #                  and max(self.comm_req[self.current_warehouse[v], w2], self.comm_req[w2, w3]) < self.veh_cap)
-        #              }
-        # # Exploración a 2 saltos vista
-        # # Valor de self.tree = (Comm_req no entregados a 2 saltos vista, tiempo (carga + viaje + descarga)x2)
-        # self.tree.update({(v, w2, w3): ((min(self.veh_cap, self.comm_req[self.current_warehouse[v], w2]) +
-        #                                  min(self.veh_cap, self.comm_req[w2, w3]),
-        #                                  (self.comm_req[self.current_warehouse[v], w2] * self.load_time +
-        #                                   self.trip_duration[self.current_warehouse[v], w2] +
-        #                                   self.comm_req[self.current_warehouse[v], w2] * self.unload_time +
-        #                                   self.comm_req[w2, w3] * self.load_time +
-        #                                   self.trip_duration[self.current_warehouse[v], w2] +
-        #                                   self.comm_req[w2, w3] * self.unload_time)))
-        #                   for v in self.vehicles for w2 in self.warehouses for w3 in self.warehouses
-        #                   if (not((v, w2, w3) in self.tree.keys())
-        #                       and w2 != self.current_warehouse[v]
-        #                       and (self.current_warehouse[v], w2) in self.comm_req.keys()
-        #                       and w3 != w2
-        #                       and self.comm_req[w2, w3] > 0)
-        #                   })
-        #
-        # # [i+2 if i > 3 else i + 3 for i in range(10)]  # if else antes del for
-        #
-        # # Exploración a 1 salto vista
-        # self.tree.update({(v, w2): (min(self.veh_cap, self.comm_req[self.current_warehouse[v], w2]),
-        #                             (self.comm_req[self.current_warehouse[v], w2] * self.load_time +
-        #                              self.trip_duration[self.current_warehouse[v], w2] +
-        #                              self.comm_req[self.current_warehouse[v], w2] * self.unload_time))
-        #                   for v in self.vehicles
-        #                   for w2 in self.warehouses
-        #                   for w3 in self.warehouses
-        #                   if (w2 != self.current_warehouse[v]
-        #                       and (self.current_warehouse[v], w2) in self.comm_req.keys()
-        #                       and not any((v, w2, w3) in self.tree.keys() for w3 in self.warehouses)
-        #                       and self.comm_req[self.current_warehouse[v], w2] > 0
-        #                       and (self.current_warehouse[v], w2) in self.comm_req.keys()
-        #                       and w3 != w2
-        #                       and (w2, w3) in self.comm_req.keys())
-        #                   })
+            # Si existe el 2º salto
+            if self.comm_req[w2, w3] > 0:
+                # Si además existe el 3º salto (de current_w a w3)
+                if (w3 != self.current_warehouse[v]
+                        and self.comm_req[self.current_warehouse[v], w3] > 0
+                        and max(self.comm_req[self.current_warehouse[v], w2], self.comm_req[w2, w3]) < self.veh_cap
+                        and self.comm_req[w2, w3] > 0):
+                    q3 = min(self.veh_cap - max(q1, q2), self.comm_req[self.current_warehouse[v], w3])
+                    t3 = q3 * (self.load_time + self.unload_time)
+                self.tree[(v, w2, w3)] = (q1 + q2 + q3, t1 + t2 + t3 + te)
+            # Si sólo existe el 1º salto
+            elif self.comm_req[self.current_warehouse[v], w2] > 0 \
+                    and not any((v, w2, w3) in self.tree.keys() for w3 in self.warehouses):
+                self.tree[(v, w2, 0)] = (q1, t1 + te)
         return self.tree
 
     def select_move(self):

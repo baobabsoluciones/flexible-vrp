@@ -84,6 +84,7 @@ class Heuristic(Experiment):
                             if (w3 != w2
                                 and w2 != self.current_warehouse[v]
                                 and self.comm_req[w2, w3] > 0)]:
+            # Estructura: self.tree{(v,w2,w3):(q1+q2+q3,t1+t2+t3+te)}
             q1 = min(self.veh_cap, self.comm_req[self.current_warehouse[v], w2])
             q2 = min(self.veh_cap, self.comm_req[w2, w3])
             q3 = 0

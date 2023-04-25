@@ -90,8 +90,14 @@ class Heuristic(Experiment):
             t1 = q1 * (self.load_time + self.unload_time) + self.trip_duration[self.current_warehouse[v], w2]
             t2 = q2 * (self.load_time + self.unload_time) + self.trip_duration[self.current_warehouse[v], w2]
             t3 = 0
+            te_s0 = 0
             te = 0
             te2 = 0
+            t_load = q1 * self.load_time
+            t_max_load = self.veh_cap * self.load_time
+            t_unload = q1 * self.unload_time
+            t_arrival_min = self.current_time[v] + t_max_load + self.trip_duration[self.current_warehouse[v], w2]
+            t_departure = self.current_time[v] + t_max_load
             # Si existe el 2º salto
             if self.comm_req[w2, w3] > 0:
                 # Si además existe el 3º salto (de current_w a w3)
@@ -105,20 +111,35 @@ class Heuristic(Experiment):
             elif self.comm_req[self.current_warehouse[v], w2] > 0 \
                     and not any((v, w2, w3) in self.tree.keys() for w3 in self.warehouses):
                 w3 = "0"
-            # Comprobación simultaneidad
+            # self.tree[(v, w2, w3)] = (q1 + q2 + q3, t1 + t2 + t3 + te + te2)
+            # SIMULTANEITY VEH
+            # Ventanas temporales del movimiento elegido para origen y destino
+            if self.stops[v] != 0:
+                selected_interval = [t_arrival_min, t_departure]
+            else:
+                first_interval = [self.current_time[v], self.current_time[v] + t_max_load]
+                selected_interval = [t_arrival_min, t_departure]
             # definir te
+            window_duration = (selected_interval[1] - selected_interval[0])
+            # next_start_time = float(480)
+            # for tup in self.dict_empty_W[w2]:
+            #     if tup[0] > t_arrival_min and tup[0] < next_start_time and window_duration <= tup[1]:
+            #         next_start_time = tup[0]
+            #         te = next_start_time - t_arrival_min
+            #     break
 
             # definir te2
-            if w3 != "0":
-                # te2
-            self.tree[(v, w2, w3)] = (q1 + q2 + q3, t1 + t2 + t3 + te + te2)
+            # if w3 != "0":
+            #     # te2
+            if q1 + q2 > 0:
+                self.tree[(v, w2, w3)] = (q1 + q2 + q3, t1 + t2 + t3 + te + te2)
         return self.tree
 
     def select_move(self):
         # attractive
-        k = self.veh_cap * (self.load_time + self.unload_time) * 2
-        alpha = 1/(self.veh_cap * 2)
-        beta = self.average_time_d * 2 + k
+        k = self.veh_cap * (self.load_time + self.unload_time) * 2  # 66
+        alpha = 1/(self.veh_cap)
+        beta = (self.average_time_d )  # 102
         # dict_attractive: diccionario que recoge el atractivo de cada movimiento
         dict_attractive = {clave: valor[0] * alpha + beta / valor[1] for clave, valor in self.tree.items()}
         dict_sorted_attractive = {clave: valor for clave, valor in sorted(dict_attractive.items(),
@@ -147,7 +168,7 @@ class Heuristic(Experiment):
         te = 0
         te_s0 = 0
         t_arrival = self.current_time[v] + t_max_load + self.trip_duration[w, w2] + te
-        t_departure = self.current_time[v] + t_max_load  # t_departurez
+        t_departure = t_arrival + t_unload + t_max_load
         # SIMULTANEITY VEH
         # Ventanas temporales del movimiento elegido para origen y destino
         if self.stops[v] != 0:

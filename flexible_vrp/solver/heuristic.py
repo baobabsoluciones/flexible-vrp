@@ -181,7 +181,8 @@ class Heuristic(Experiment):
         if self.stops[v] != 0:
             self.dict_occupation_W[w2].append((v, self.stops[v] + 1, t_arrival, t_departure))
         else:
-            self.dict_occupation_W[w].append((v, self.stops[v], self.current_time[v] + te_s0, self.current_time[v] + t_max_load))
+            te_s0 = self.dict_empty_W[w][0][0]
+            self.dict_occupation_W[w].append((v, self.stops[v], self.current_time[v] + te_s0, self.current_time[v] + te_s0 + t_max_load))
             self.dict_occupation_W[w2].append((v, self.stops[v] + 1, t_arrival, t_departure))
         self.dict_occupation_W = {clave: sorted(values, key=lambda x: x[2]) for clave, values in
                                   self.dict_occupation_W.items()}

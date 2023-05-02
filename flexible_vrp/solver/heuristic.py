@@ -83,21 +83,23 @@ class Heuristic(Experiment):
         self.tree = {}
         for (v, w2, w3) in [(v, w2, w3) for v in self.vehicles for w2 in self.warehouses for w3 in self.warehouses
                             if (w3 != w2 and w2 != self.current_warehouse[v])]:
-            # Estructura: self.tree{(v,w2,w3): (q1+q2+q3,t1+t2+t3+te)}
+            # Estructura: self.tree{(v,w2,w3): (q1+q2+q3, t1+t2+t3+te+te2+te_s0, te)}
             q1 = min(self.veh_cap, self.comm_req[self.current_warehouse[v], w2])
             q2 = min(self.veh_cap, self.comm_req[w2, w3])
             q3 = 0
             t1 = q1 * (self.load_time + self.unload_time) + self.trip_duration[self.current_warehouse[v], w2]
             t2 = q2 * (self.load_time + self.unload_time) + self.trip_duration[self.current_warehouse[v], w2]
             t3 = 0
-            te_s0 = 0
             te = 0
             te2 = 0
-            t_load = q1 * self.load_time
+            te_s0 = 0
             t_max_load = self.veh_cap * self.load_time
-            t_unload = q1 * self.unload_time
-            t_arrival_min = self.current_time[v] + t_max_load + self.trip_duration[self.current_warehouse[v], w2]
-            t_departure = t_arrival_min + t_unload + t_max_load
+            t_unload_q1 = q1 * self.unload_time
+            t_unload_q2 = q2 * self.unload_time
+            t_arrival_min_w2 = self.current_time[v] + t_max_load + self.trip_duration[self.current_warehouse[v], w2]
+            t_departure_w2 = t_arrival_min_w2 + t_unload_q1 + t_max_load
+            t_arrival_min_w3 = t_departure_w2 + self.trip_duration[w2, w3]
+            t_departure_w3 = t_arrival_min_w3 + t_unload_q2 + t_max_load
             # Si existe el 2º salto
             if self.comm_req[w2, w3] > 0:
                 # Si además existe el 3º salto (de current_w a w3)
@@ -111,28 +113,38 @@ class Heuristic(Experiment):
             elif self.comm_req[self.current_warehouse[v], w2] > 0 \
                     and not any((v, w2, w3) in self.tree.keys() for w3 in self.warehouses):
                 w3 = "0"
-            # self.tree[(v, w2, w3)] = (q1 + q2 + q3, t1 + t2 + t3 + te + te2)
+
             # SIMULTANEITY VEH
             # Ventanas temporales del movimiento elegido para origen y destino
-            if self.stops[v] != 0:
-                selected_interval = [t_arrival_min, t_departure]
-            else:
-                first_interval = [self.current_time[v], self.current_time[v] + t_max_load]
-                selected_interval = [t_arrival_min, t_departure]
-            # definir te
-            window_duration = (selected_interval[1] - selected_interval[0])
+            # Definir tiempo espera para s=0 te_s0
+            if self.stops[v] == 0:
+                selected_interval_w = [self.current_time[v], self.current_time[v] + t_max_load]
+                window_duration = (selected_interval_w[1] - selected_interval_w[0])
+                lst = self.dict_empty_W[self.current_warehouse[v]]
+                for tup in lst:
+                    if tup[1] > window_duration and selected_interval_w[1] < (tup[0] + tup[1]):
+                        te_s0 = max(tup[0] - selected_interval_w[0], 0)
+                        break
+            # Definir tiempo espera te
+            selected_interval_w2 = [t_arrival_min_w2 + te_s0, t_departure_w2 + te_s0]
+            window_duration = (selected_interval_w2[1] - selected_interval_w2[0])
             lst = self.dict_empty_W[w2]
             for tup in lst:
-                if tup[1] > window_duration and selected_interval[1] < (tup[0] + tup[1]):
-                    te = max(tup[0] - selected_interval[0], 0)
+                if tup[1] > window_duration and selected_interval_w2[1] < (tup[0] + tup[1]):
+                    te = max(tup[0] - selected_interval_w2[0], 0)
                     break
+            # Definir tiempo espera salto 2 te2
+            selected_interval_w3 = [t_arrival_min_w3 + te_s0 + te, t_departure_w3 + te_s0 + te]
+            if w3 != "0":
+                window_duration = (selected_interval_w3[1] - selected_interval_w3[0])
+                lst = self.dict_empty_W[w3]
+                for tup in lst:
+                    if tup[1] > window_duration and selected_interval_w3[1] < (tup[0] + tup[1]):
+                        te2 = max(tup[0] - selected_interval_w3[0], 0)
+                        break
 
-
-            # definir te2
-            # if w3 != "0":
-            #     # te2
             if q1 + q2 > 0:
-                self.tree[(v, w2, w3)] = (q1 + q2 + q3, t1 + t2 + t3 + te + te2, te)
+                self.tree[(v, w2, w3)] = (q1 + q2 + q3, t1 + t2 + t3 + te + te2 + te_s0, te_s0, te)
         return self.tree
 
     def select_move(self):
@@ -141,7 +153,7 @@ class Heuristic(Experiment):
         alpha = 1/(self.veh_cap)
         beta = (self.average_time_d)  # 102
         # dict_attractive: diccionario que recoge el atractivo de cada movimiento
-        dict_attractive = {clave: valor[0] * alpha + beta / valor[1] for clave, valor in self.tree.items()}
+        dict_attractive = {clave: valor[0] for clave, valor in self.tree.items()}
         dict_sorted_attractive = {clave: valor for clave, valor in sorted(dict_attractive.items(),
                                                                           key=lambda item: item[1], reverse=True)}
         # Progresión geométrica para asignar probabilidades
@@ -161,35 +173,40 @@ class Heuristic(Experiment):
         w2 = self.move[1]
         cant = self.comm_req[w, w2]
         q1 = min(cant, self.veh_cap)
-        te = self.tree[self.move][2]
-        te_s0 = 0
+        te = self.tree[self.move][3]
+        te_s0 = self.tree[self.move][2]
         t_load = q1 * self.load_time
         t_max_load = self.veh_cap * self.load_time
         t_unload = q1 * self.unload_time
-        t_arrival = self.current_time[v] + t_max_load + self.trip_duration[w, w2] + te
+        t_arrival = self.current_time[v] + t_max_load + self.trip_duration[w, w2] + te_s0 + te
         t_departure = t_arrival + t_unload + t_max_load
-
-        # SIMULTANEITY VEH
-        # Ventanas temporales del movimiento elegido para origen y destino
-        if self.stops[v] != 0:
-            selected_interval = [t_arrival, t_departure]
-        else:
-            first_interval = [self.current_time[v] + te_s0, self.current_time[v] + t_max_load]
-            selected_interval = [t_arrival, t_departure]
 
         # Update warehouse occupation time
         if self.stops[v] != 0:
             self.dict_occupation_W[w2].append((v, self.stops[v] + 1, t_arrival, t_departure))
         else:
-            te_s0 = self.dict_empty_W[w][0][0]
             self.dict_occupation_W[w].append((v, self.stops[v], self.current_time[v] + te_s0, self.current_time[v] + te_s0 + t_max_load))
-            self.dict_occupation_W[w2].append((v, self.stops[v] + 1, t_arrival, t_departure))
+            self.dict_occupation_W[w2].append((v, self.stops[v] + 1, t_arrival , t_departure))
         self.dict_occupation_W = {clave: sorted(values, key=lambda x: x[2]) for clave, values in
                                   self.dict_occupation_W.items()}
         # dict_empty_W guarda el inicio de una ventana temporal libre y su duración: [t inicio vacio, duracion]
-        self.dict_empty_W = {w: [(tupla[i][3], tupla[i + 1][2] - tupla[i][3]) if i < len(tupla) - 1
-                                 else (tupla[i][3], 480 - tupla[i][3])
-                                 for i in range(len(tupla))] for w, tupla in self.dict_occupation_W.items()}
+        self.dict_empty_W = {w: [] for w in self.warehouses}
+        for x, tupla in self.dict_occupation_W.items():
+            if len(self.dict_occupation_W[x]) != 0:
+                if tupla[0][2] > 0:
+                    self.dict_empty_W[x].append((0, tupla[0][2]))
+                for i in range(len(tupla)):
+                    if i < len(tupla)-1:
+                        self.dict_empty_W[x].append((tupla[i][3], tupla[i + 1][2] - tupla[i][3]))
+                    else:
+                        if 480 - tupla[i][3] < 0:
+                            b = 0
+                        else:
+                            b = 480 - tupla[i][3]
+                        self.dict_empty_W[x].append((tupla[i][3], b))
+
+            else:
+                self.dict_empty_W[x].append((0, 480))
 
         # Update route selected
         self.comm_req[w, w2] -= q1

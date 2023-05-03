@@ -88,7 +88,7 @@ class Heuristic(Experiment):
             q2 = min(self.veh_cap, self.comm_req[w2, w3])
             q3 = 0
             t1 = q1 * (self.load_time + self.unload_time) + self.trip_duration[self.current_warehouse[v], w2]
-            t2 = q2 * (self.load_time + self.unload_time) + self.trip_duration[self.current_warehouse[v], w2]
+            t2 = q2 * (self.load_time + self.unload_time) + self.trip_duration[w2, w3]
             t3 = 0
             te = 0
             te2 = 0
@@ -104,9 +104,7 @@ class Heuristic(Experiment):
             if self.comm_req[w2, w3] > 0:
                 # Si además existe el 3º salto (de current_w a w3)
                 if (w3 != self.current_warehouse[v]
-                        and self.comm_req[self.current_warehouse[v], w3] > 0
-                        and max(self.comm_req[self.current_warehouse[v], w2], self.comm_req[w2, w3]) < self.veh_cap
-                        and self.comm_req[w2, w3] > 0):
+                        and max(self.comm_req[self.current_warehouse[v], w2], self.comm_req[w2, w3]) < self.veh_cap):
                     q3 = min(self.veh_cap - max(q1, q2), self.comm_req[self.current_warehouse[v], w3])
                     t3 = q3 * (self.load_time + self.unload_time)
             # Si sólo existe el 1º salto

@@ -81,6 +81,7 @@ class Heuristic(Experiment):
 
     def explore(self, w2=None):
         self.tree = {}
+        a = 1
         for (v, w2, w3) in [(v, w2, w3) for v in self.vehicles for w2 in self.warehouses for w3 in self.warehouses
                             if (w3 != w2 and w2 != self.current_warehouse[v])]:
             # Estructura: self.tree{(v,w2,w3): (q1+q2+q3, t1+t2+t3+te+te2+te_s0, te)}
@@ -93,6 +94,7 @@ class Heuristic(Experiment):
             te = 0
             te2 = 0
             te_s0 = 0
+            b = 1
             t_max_load = self.veh_cap * self.load_time
             t_unload_q1 = q1 * self.unload_time
             t_unload_q2 = q2 * self.unload_time
@@ -104,13 +106,19 @@ class Heuristic(Experiment):
             if self.comm_req[w2, w3] > 0:
                 # Si además existe el 3º salto (de current_w a w3)
                 if (w3 != self.current_warehouse[v]
+                        and self.comm_req[self.current_warehouse[v], w3] > 0
                         and max(self.comm_req[self.current_warehouse[v], w2], self.comm_req[w2, w3]) < self.veh_cap):
                     q3 = min(self.veh_cap - max(q1, q2), self.comm_req[self.current_warehouse[v], w3])
                     t3 = q3 * (self.load_time + self.unload_time)
+                a = a + 1
             # Si sólo existe el 1º salto
-            elif self.comm_req[self.current_warehouse[v], w2] > 0 \
-                    and not any((v, w2, w3) in self.tree.keys() for w3 in self.warehouses):
-                w3 = "0"
+            elif a == len(self.warehouses):
+                if (self.comm_req[self.current_warehouse[v], w2] > 0
+                        and all((v, w2, w3) not in self.tree.keys() for w3 in self.warehouses)):
+                    b = 0
+                a = 1
+            else:
+                a = a + 1
 
             # SIMULTANEITY VEH
             # Ventanas temporales del movimiento elegido para origen y destino
@@ -133,16 +141,17 @@ class Heuristic(Experiment):
                     break
             # Definir tiempo espera salto 2 te2
             selected_interval_w3 = [t_arrival_min_w3 + te_s0 + te, t_departure_w3 + te_s0 + te]
-            if w3 != "0":
+            if b != 0:
                 window_duration = (selected_interval_w3[1] - selected_interval_w3[0])
                 lst = self.dict_empty_W[w3]
                 for tup in lst:
                     if tup[1] > window_duration and selected_interval_w3[1] < (tup[0] + tup[1]):
                         te2 = max(tup[0] - selected_interval_w3[0], 0)
                         break
-
-            if q1 + q2 > 0:
-                self.tree[(v, w2, w3)] = (q1 + q2 + q3, t1 + t2 + t3 + te + te2 + te_s0, te_s0, te)
+            if b != 0 and q2 > 0:
+                self.tree[(v, w2, w3)] = (q1, t1 + t2 + te + te2 + te_s0, te_s0, te)  # q1 + q2 + q3
+            if q1 > 0 and b == 0:
+                self.tree[(v, w2, "0")] = (q1, t1 + te + te_s0, te_s0, te)
         return self.tree
 
     def select_move(self):
@@ -183,7 +192,8 @@ class Heuristic(Experiment):
         if self.stops[v] != 0:
             self.dict_occupation_W[w2].append((v, self.stops[v] + 1, t_arrival, t_departure))
         else:
-            self.dict_occupation_W[w].append((v, self.stops[v], self.current_time[v] + te_s0, self.current_time[v] + te_s0 + t_max_load))
+            self.dict_occupation_W[w].append((v, self.stops[v], self.current_time[v] + te_s0, self.current_time[v]
+                                              + te_s0 + t_max_load))
             self.dict_occupation_W[w2].append((v, self.stops[v] + 1, t_arrival , t_departure))
         self.dict_occupation_W = {clave: sorted(values, key=lambda x: x[2]) for clave, values in
                                   self.dict_occupation_W.items()}

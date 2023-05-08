@@ -70,7 +70,8 @@ class Heuristic(Experiment):
         # todo: parar si no quedan commodities opcionales
         # posible todo: si un warehouse esta saturado y le faltan com_req para esa solución y descartarla
         # lista de vehículos que ha superado el tiempo límite
-        list_veh_time_over = [v for v in self.vehicles if (self.current_time[v] + self.veh_cap * self.load_time) > self.req_time_limit]
+        list_veh_time_over = [v for v in self.vehicles
+                              if (self.current_time[v] + self.veh_cap * self.load_time) > self.req_time_limit]
         stop = 0
         if all(valor == 0 for valor in self.comm_req.values()):
             stop = 1
@@ -81,20 +82,20 @@ class Heuristic(Experiment):
 
     def explore(self, w2=None):
         self.tree = {}
-        a = 1
+        counter = 1
         for (v, w2, w3) in [(v, w2, w3) for v in self.vehicles for w2 in self.warehouses for w3 in self.warehouses
                             if (w3 != w2 and w2 != self.current_warehouse[v])]:
-            # Estructura: self.tree{(v,w2,w3): (q1+q2+q3, t1+t2+t3+te+te2+te_s0, te)}
+            # Estructura: self.tree{(v,w2,w3): (q1, q2, q3, t1 + t2 + t3 + te_w + te_w2 + te_w3, te_w, te_w2, te_w3)}
             q1 = min(self.veh_cap, self.comm_req[self.current_warehouse[v], w2])
             q2 = min(self.veh_cap, self.comm_req[w2, w3])
             q3 = 0
             t1 = q1 * (self.load_time + self.unload_time) + self.trip_duration[self.current_warehouse[v], w2]
             t2 = q2 * (self.load_time + self.unload_time) + self.trip_duration[w2, w3]
             t3 = 0
-            te = 0
-            te2 = 0
-            te_s0 = 0
-            b = 1
+            te_w = 0  # Solo necesario en stop 0
+            te_w2 = 0
+            te_w3 = 0
+            flag = 1
             t_max_load = self.veh_cap * self.load_time
             t_unload_q1 = q1 * self.unload_time
             t_unload_q2 = q2 * self.unload_time
@@ -103,64 +104,66 @@ class Heuristic(Experiment):
             t_arrival_min_w3 = t_departure_w2 + self.trip_duration[w2, w3]
             t_departure_w3 = t_arrival_min_w3 + t_unload_q2 + t_max_load
             # Si existe el 2º salto
-            if self.comm_req[w2, w3] > 0:
-                # Si además existe el 3º salto (de current_w a w3)
-                if (w3 != self.current_warehouse[v]
-                        and self.comm_req[self.current_warehouse[v], w3] > 0
-                        and max(self.comm_req[self.current_warehouse[v], w2], self.comm_req[w2, w3]) < self.veh_cap):
-                    q3 = min(self.veh_cap - max(q1, q2), self.comm_req[self.current_warehouse[v], w3])
-                    t3 = q3 * (self.load_time + self.unload_time)
-                a = a + 1
+            # Si además existe el 3º salto (de current_w a w3)
+            if (w3 != self.current_warehouse[v]
+                    and self.comm_req[self.current_warehouse[v], w3] > 0
+                    and max(self.comm_req[self.current_warehouse[v], w2], self.comm_req[w2, w3]) < self.veh_cap):
+                q3 = min(self.veh_cap - max(q1, q2), self.comm_req[self.current_warehouse[v], w3])
+                t3 = q3 * (self.load_time + self.unload_time)
+            counter = counter + 1
             # Si sólo existe el 1º salto
-            elif a == len(self.warehouses):
-                if (self.comm_req[self.current_warehouse[v], w2] > 0
-                        and all((v, w2, w3) not in self.tree.keys() for w3 in self.warehouses)):
-                    b = 0
-                a = 1
+            if counter == len(self.warehouses):
+                if q2 + q3 == 0 and all((v, w2, w3) not in self.tree.keys() for w3 in self.warehouses):
+                    flag = 0
+                counter = 1
             else:
-                a = a + 1
+                counter = counter + 1
 
             # SIMULTANEITY VEH
             # Ventanas temporales del movimiento elegido para origen y destino
-            # Definir tiempo espera para s=0 te_s0
+
+            # Definir tiempo espera para s=0 te_w
             if self.stops[v] == 0:
                 selected_interval_w = [self.current_time[v], self.current_time[v] + t_max_load]
                 window_duration = (selected_interval_w[1] - selected_interval_w[0])
                 lst = self.dict_empty_W[self.current_warehouse[v]]
                 for tup in lst:
                     if tup[1] > window_duration and selected_interval_w[1] < (tup[0] + tup[1]):
-                        te_s0 = max(tup[0] - selected_interval_w[0], 0)
+                        te_w = max(tup[0] - selected_interval_w[0], 0)
                         break
-            # Definir tiempo espera te
-            selected_interval_w2 = [t_arrival_min_w2 + te_s0, t_departure_w2 + te_s0]
+
+            # Definir tiempo espera te_w2
+            selected_interval_w2 = [t_arrival_min_w2 + te_w, t_departure_w2 + te_w]
             window_duration = (selected_interval_w2[1] - selected_interval_w2[0])
             lst = self.dict_empty_W[w2]
             for tup in lst:
                 if tup[1] > window_duration and selected_interval_w2[1] < (tup[0] + tup[1]):
-                    te = max(tup[0] - selected_interval_w2[0], 0)
+                    te_w2 = max(tup[0] - selected_interval_w2[0], 0)
                     break
-            # Definir tiempo espera salto 2 te2
-            selected_interval_w3 = [t_arrival_min_w3 + te_s0 + te, t_departure_w3 + te_s0 + te]
-            if b != 0:
-                window_duration = (selected_interval_w3[1] - selected_interval_w3[0])
+
+            # Definir tiempo espera salto 2 te_w3
+            selected_interval_w3 = [t_arrival_min_w3 + te_w + te_w2, t_departure_w3 + te_w + te_w2]
+            if flag != 0 and q2 + q3 > 0:
+                window_duration = selected_interval_w3[1] - selected_interval_w3[0]
                 lst = self.dict_empty_W[w3]
                 for tup in lst:
                     if tup[1] > window_duration and selected_interval_w3[1] < (tup[0] + tup[1]):
-                        te2 = max(tup[0] - selected_interval_w3[0], 0)
+                        te_w3 = max(tup[0] - selected_interval_w3[0], 0)
                         break
-            if b != 0 and q2 > 0:
-                self.tree[(v, w2, w3)] = (q1, t1 + t2 + te + te2 + te_s0, te_s0, te)  # q1 + q2 + q3
-            if q1 > 0 and b == 0:
-                self.tree[(v, w2, "0")] = (q1, t1 + te + te_s0, te_s0, te)
+
+            # Definición self.tree
+            if flag != 0 and q2 + q3 > 0:
+                self.tree[(v, w2, w3)] = (q1, q2, q3, t1 + t2 + t3 + te_w + te_w2 + te_w3, te_w, te_w2, te_w3)
+            elif q1 > 0:
+                self.tree[(v, w2, "0")] = (q1, q2, q3, t1 + te_w + te_w2 + te_w3, te_w, te_w2, te_w3)
         return self.tree
 
     def select_move(self):
         # attractive
-        k = self.veh_cap * (self.load_time + self.unload_time) * 2  # 66
-        alpha = 1/(self.veh_cap)
-        beta = (self.average_time_d)  # 102
+        alpha = 1/(self.veh_cap + 1)
         # dict_attractive: diccionario que recoge el atractivo de cada movimiento
-        dict_attractive = {clave: valor[0] for clave, valor in self.tree.items()}
+        dict_attractive = {clave: valor[0] + valor[1] * alpha + valor[2] * alpha ** 2
+                           for clave, valor in self.tree.items()}
         dict_sorted_attractive = {clave: valor for clave, valor in sorted(dict_attractive.items(),
                                                                           key=lambda item: item[1], reverse=True)}
         # Progresión geométrica para asignar probabilidades
@@ -178,26 +181,40 @@ class Heuristic(Experiment):
         v = self.move[0]
         w = self.current_warehouse[v]
         w2 = self.move[1]
-        cant = self.comm_req[w, w2]
-        q1 = min(cant, self.veh_cap)
-        te = self.tree[self.move][3]
-        te_s0 = self.tree[self.move][2]
-        t_load = q1 * self.load_time
+        w3 = self.move[2]
+        q1 = self.tree[self.move][0]
+        q2 = self.tree[self.move][1]
+        q3 = self.tree[self.move][2]
+        # t1 + t2 + t3 = self.tree[self.move][3]
+        te_w = self.tree[self.move][4]
+        te_w2 = self.tree[self.move][5]
+        te_w3 = self.tree[self.move][6]
+        t_load_w = (q1 + q3) * self.load_time
+        t_load_w2 = q2 * self.load_time
         t_max_load = self.veh_cap * self.load_time
-        t_unload = q1 * self.unload_time
-        t_arrival = self.current_time[v] + t_max_load + self.trip_duration[w, w2] + te_s0 + te
-        t_departure = t_arrival + t_unload + t_max_load
+        t_unload_w2 = q1 * self.unload_time
+        t_unload_w3 = (q2 + q3) * self.unload_time
+        t_arrival_w2 = self.current_time[v] + t_load_w + self.trip_duration[w, w2] + te_w + te_w2
+        t_departure_w2 = t_arrival_w2 + t_unload_w2 + t_load_w2
+        t_arrival_w3 = 0
+        t_departure_w3 = 0
+        if w3 != "0":
+            t_arrival_w3 = t_departure_w2 + self.trip_duration[w2, w3] + te_w3
+            t_departure_w3 = t_arrival_w3 + t_unload_w3 + t_max_load
 
         # Update warehouse occupation time
-        if self.stops[v] != 0:
-            self.dict_occupation_W[w2].append((v, self.stops[v] + 1, t_arrival, t_departure))
+        if self.stops[v] == 0:
+            self.dict_occupation_W[w].append((v, self.stops[v], self.current_time[v] + te_w, self.current_time[v]
+                                              + te_w + t_load_w))
+        if w3 != "0":
+            self.dict_occupation_W[w2].append((v, self.stops[v] + 1, t_arrival_w2, t_departure_w2))
+            self.dict_occupation_W[w3].append((v, self.stops[v] + 2, t_arrival_w3, t_departure_w3))
         else:
-            self.dict_occupation_W[w].append((v, self.stops[v], self.current_time[v] + te_s0, self.current_time[v]
-                                              + te_s0 + t_max_load))
-            self.dict_occupation_W[w2].append((v, self.stops[v] + 1, t_arrival , t_departure))
+            self.dict_occupation_W[w2].append((v, self.stops[v] + 1, t_arrival_w2, t_departure_w2 + t_max_load))
         self.dict_occupation_W = {clave: sorted(values, key=lambda x: x[2]) for clave, values in
                                   self.dict_occupation_W.items()}
-        # dict_empty_W guarda el inicio de una ventana temporal libre y su duración: [t inicio vacio, duracion]
+        # Update dict_empty
+        # dict_empty_W guarda el inicio de una ventana temporal libre y su duración: [t inicio vacío, duración]
         self.dict_empty_W = {w: [] for w in self.warehouses}
         for x, tupla in self.dict_occupation_W.items():
             if len(self.dict_occupation_W[x]) != 0:
@@ -212,34 +229,31 @@ class Heuristic(Experiment):
                         else:
                             b = 480 - tupla[i][3]
                         self.dict_empty_W[x].append((tupla[i][3], b))
-
             else:
                 self.dict_empty_W[x].append((0, 480))
 
-        # Update route selected
+        # Update commodities
         self.comm_req[w, w2] -= q1
-        if q1 != 0:
+        if w3 != "0":
+            self.comm_req[w2, w3] -= q2
+            if q3 > 0:
+                self.comm_req[w, w3] -= q3
+        if q1 > 0:
             self.comm_req_loaded[w, w2] += q1
-        self.current_time[v] = t_arrival + t_unload
-        self.stops[v] += 1
-        self.sol[v, w2, self.stops[v]] = (q1, self.current_time[v])
-        self.current_warehouse[v] = w2
-        # todo: if busy
-
-        # " UPDATE 3º SALTO"
-        # previous_warehouse = {key[1]: value for key, value in self.sol.items()
-        #                       if self.stops[v] >= 2 and key[0] == v and key[2] == self.stops[v] - 2}
-        # todo: update tiempo
-        # todo: conflictos saltos grandes (terceros)
-        # self.sol.update({(v, w2, self.stops[v] - 2):
-        #                      (min(self.veh_cap - max(self.sol[(v, previous_warehouse.keys(), self.stops[v] - 2)][0],
-        #                                              self.sol[(v, self.current_warehouse[v], self.stops[v] - 1)][0]),
-        #                           self.comm_req[(previous_warehouse.keys(), w2)]), t_departure)
-        #                      if (self.stops[v] >= 2
-        #                          and self.comm_req[(previous_warehouse.keys(), w2)] > 0
-        #                          and (v, previous_warehouse.keys(), self.stops[v] - 2) in self.sol.keys()
-        #                          and (v, self.current_warehouse[v], self.stops[v] - 1) in self.sol.keys()
-        #                          and self.sol[(v, previous_warehouse.keys(), self.stops[v] - 2)][0] < self.veh_cap
-        #                          and self.sol[(v, self.current_warehouse[v], self.stops[v] - 1)][0] < self.veh_cap)
-        #                  })
+        if w3 != "0":
+            if q2 > 0:
+                self.comm_req_loaded[w2, w3] += q2
+            if q3 > 0:
+                self.comm_req_loaded[w, w3] += q3
+        # Update solution
+        self.sol[v, w2, self.stops[v] + 1] = (q1, q3, t_arrival_w2 + t_unload_w2)
+        if w3 != "0":
+            self.sol[v, w3, self.stops[v] + 2] = (q2, 0, t_arrival_w3 + t_unload_w3)
+            self.current_warehouse[v] = w3
+            self.current_time[v] = t_arrival_w3 + t_unload_w3
+            self.stops[v] += 2
+        else:
+            self.current_warehouse[v] = w2
+            self.current_time[v] = t_arrival_w2 + t_unload_w2
+            self.stops[v] += 1
         return self.sol

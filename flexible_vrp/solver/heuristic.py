@@ -194,6 +194,8 @@ class Heuristic(Experiment):
         t_max_load = self.veh_cap * self.load_time
         t_unload_w2 = q1 * self.unload_time
         t_unload_w3 = (q2 + q3) * self.unload_time
+        t_arrival_w = self.current_time[v] + te_w
+        t_departure_w = t_arrival_w + t_load_w2
         t_arrival_w2 = self.current_time[v] + t_load_w + self.trip_duration[w, w2] + te_w + te_w2
         t_departure_w2 = t_arrival_w2 + t_unload_w2 + t_load_w2
         t_arrival_w3 = 0
@@ -213,6 +215,14 @@ class Heuristic(Experiment):
             self.dict_occupation_W[w2].append((v, self.stops[v] + 1, t_arrival_w2, t_departure_w2 + t_max_load))
         self.dict_occupation_W = {clave: sorted(values, key=lambda x: x[2]) for clave, values in
                                   self.dict_occupation_W.items()}
+        # dict Veh
+        # self.dict_occupation_V[v].append((t_arrival_w, t_departure_w, w, {(w, w2, "req"): q1}, {(w, w3, "req"): q3}))
+        # if w3 != "0":
+        #     self.dict_occupation_V[v].append((t_arrival_w2, t_departure_w2, w2, {(w2, w3, "req"): q2}))
+        #     self.dict_occupation_V[v].append((t_arrival_w3, t_departure_w3, w3, {():}))
+        # else:
+        #    self.dict_occupation_V[v].append((t_arrival_w2, t_departure_w2, w2, {():}))
+
         # Update dict_empty
         # dict_empty_W guarda el inicio de una ventana temporal libre y su duración: [t inicio vacío, duración]
         self.dict_empty_W = {w: [] for w in self.warehouses}
@@ -246,9 +256,9 @@ class Heuristic(Experiment):
             if q3 > 0:
                 self.comm_req_loaded[w, w3] += q3
         # Update solution
-        self.sol[v, w2, self.stops[v] + 1] = (q1, q3, t_arrival_w2 + t_unload_w2)
+        self.sol[v, w, self.stops[v]] = (q1, q3, t_arrival_w)
         if w3 != "0":
-            self.sol[v, w3, self.stops[v] + 2] = (q2, 0, t_arrival_w3 + t_unload_w3)
+            self.sol[v, w2, self.stops[v] + 1] = (q2, 0, t_arrival_w2 + t_unload_w2)
             self.current_warehouse[v] = w3
             self.current_time[v] = t_arrival_w3 + t_unload_w3
             self.stops[v] += 2

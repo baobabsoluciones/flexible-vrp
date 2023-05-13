@@ -107,6 +107,8 @@ class Heuristic(Experiment):
                 if q2 + q3 == 0 and all((v, w2, w3) not in self.tree.keys() for w3 in self.warehouses):
                     flag = 0
                 counter = 1
+            else:
+                counter = counter + 1
 
             t1 = (q1 + q3) * (self.load_time + self.unload_time) + self.trip_duration[self.current_warehouse[v], w2]
             t2 = q2 * (self.load_time + self.unload_time) + self.trip_duration[w2, w3]

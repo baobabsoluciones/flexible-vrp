@@ -203,8 +203,8 @@ class Heuristic(Experiment):
         t_unload_w2 = q1 * self.unload_time
         t_unload_w3 = (q2 + q3) * self.unload_time
         t_arrival_w = self.current_time[v] + te_w
-        t_departure_w = t_arrival_w + t_load_w2
-        t_arrival_w2 = self.current_time[v] + t_load_w + self.trip_duration[w, w2] + te_w + te_w2
+        t_departure_w = t_arrival_w + t_load_w
+        t_arrival_w2 = t_departure_w + self.trip_duration[w, w2] + te_w2
         t_departure_w2 = t_arrival_w2 + t_unload_w2 + t_load_w2
         t_arrival_w3 = 0
         t_departure_w3 = 0
@@ -212,7 +212,9 @@ class Heuristic(Experiment):
             t_arrival_w3 = t_departure_w2 + self.trip_duration[w2, w3] + te_w3
             t_departure_w3 = t_arrival_w3 + t_unload_w3 + t_max_load
 
-        # Update warehouse occupation time
+        # Update dict_occupation_W
+        # dict_occupation_W muestra las ventanas temporales ocupadas o reservadas
+        #   [tiempo inicio ocupación, tiempo fin ocupación]
         if self.stops[v] == 0:
             self.dict_occupation_W[w].append((v, self.stops[v], self.current_time[v] + te_w, self.current_time[v]
                                               + te_w + t_load_w))
@@ -223,13 +225,17 @@ class Heuristic(Experiment):
             self.dict_occupation_W[w2].append((v, self.stops[v] + 1, t_arrival_w2, t_departure_w2 + t_max_load))
         self.dict_occupation_W = {clave: sorted(values, key=lambda x: x[2]) for clave, values in
                                   self.dict_occupation_W.items()}
-        # dict Veh
-        # self.dict_occupation_V[v].append((t_arrival_w, t_departure_w, w, {(w, w2, "req"): q1}, {(w, w3, "req"): q3}))
-        # if w3 != "0":
-        #     self.dict_occupation_V[v].append((t_arrival_w2, t_departure_w2, w2, {(w2, w3, "req"): q2}))
-        #     self.dict_occupation_V[v].append((t_arrival_w3, t_departure_w3, w3, {():}))
-        # else:
-        #    self.dict_occupation_V[v].append((t_arrival_w2, t_departure_w2, w2, {():}))
+        # Update dict_occupation_V
+        # dict_occupation_V guarda para cada vehículo el tiempo de llegada y salida a un warehouse,
+        #   y el tipo y cantidad de commodities que carga en ese warehouse.
+        if w3 != "0":
+            self.dict_occupation_V[v].append(
+                (t_arrival_w, t_departure_w, w, {(w, w2, "req"): q1}, {(w, w3, "req"): q3}))
+            self.dict_occupation_V[v].append((t_arrival_w2, t_departure_w2, w2, {(w2, w3, "req"): q2}))
+            self.dict_occupation_V[v].append((t_arrival_w3, t_departure_w3, w3, {(): ()}))
+        else:
+            self.dict_occupation_V[v].append((t_arrival_w, t_departure_w, w, {(w, w2, "req"): q1}))
+            self.dict_occupation_V[v].append((t_arrival_w2, t_departure_w2, w2, {(): ()}))
 
         # Update dict_empty
         # dict_empty_W guarda el inicio de una ventana temporal libre y su duración: [t inicio vacío, duración]

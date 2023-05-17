@@ -104,11 +104,9 @@ class Heuristic(Experiment):
             counter = counter + 1
             # Si sólo existe el 1º salto
             if counter == len(self.warehouses):
-                if q2 + q3 == 0 and all((v, w2, w3) not in self.tree.keys() for w3 in self.warehouses):
+                if q2 + q3 == 0 and all((v, w2, w4) not in self.tree.keys() for w4 in self.warehouses):
                     flag = 0
                 counter = 1
-            else:
-                counter = counter + 1
 
             t1 = (q1 + q3) * (self.load_time + self.unload_time) + self.trip_duration[self.current_warehouse[v], w2]
             t2 = q2 * (self.load_time + self.unload_time) + self.trip_duration[w2, w3]
@@ -162,7 +160,7 @@ class Heuristic(Experiment):
             # Definición self.tree
             if flag != 0 and q2 + q3 > 0:
                 self.tree[(v, w2, w3)] = (q1, q2, q3, t1 + t2 + te_w + te_w2 + te_w3, te_w, te_w2, te_w3)
-            elif q1 > 0:
+            if flag == 0 and q2 + q3 == 0 and q1 > 0:
                 self.tree[(v, w2, "0")] = (q1, q2, q3, t1 + te_w + te_w2 + te_w3, te_w, te_w2, te_w3)
         return self.tree
 

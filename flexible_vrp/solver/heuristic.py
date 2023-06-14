@@ -76,10 +76,10 @@ class Heuristic(Experiment):
         if all(valor == 0 for valor in self.comm_req.values()):
             stop = 1
             for v in self.vehicles:
-                self.sol[v, self.current_warehouse[v], self.stops[v]] = (0, 0, self.current_warehouse[v], "fin")
+                self.sol[v, self.current_warehouse[v], self.stops[v]] = (0, 0, self.current_time[v], "fin")
         else:
             for v in list_veh_time_over:
-                self.sol[v, self.current_warehouse[v], self.stops[v]] = (0, 0, self.current_warehouse[v], "fin")
+                self.sol[v, self.current_warehouse[v], self.stops[v]] = (0, 0, self.current_time[v], "fin")
         if len(list_veh_time_over) == len(self.vehicles):
             stop = 1
         self.vehicles = [v for v in self.vehicles if v not in list_veh_time_over]  # remove v de self.vehicles

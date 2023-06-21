@@ -11,7 +11,7 @@ from analysis_tools.read_tools import read_input_data
 # }
 
 config = {
-    "solver": "heuristic",
+    "solver": "heuristic2",
     "solver_config": {"TimeLimit": 120}
 }
 

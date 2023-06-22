@@ -41,8 +41,9 @@ class Heuristic2(Experiment):
         self.comm_req = {(w1, w2): 0 for w1 in self.warehouses for w2 in self.warehouses if w1 != w2}
         for c in [c for c in self.instance.data["commodities"] if c['required']]:
             self.comm_req[(c["origin"], c["destination"])] = c["quantity"]
-        self.comm_opt = {(c["origin"], c["destination"]): c["quantity"]
-                         for c in self.instance.data["commodities"] if not c["required"]}
+        self.comm_opt = {(w1, w2): 0 for w1 in self.warehouses for w2 in self.warehouses if w1 != w2}
+        for c in [c for c in self.instance.data["commodities"] if not c['required']]:
+            self.comm_opt[(c["origin"], c["destination"])] = c["quantity"]
         self.comm_req_loaded = {(c["origin"], c["destination"]): 0
                                 for c in self.instance.data["commodities"] if c["required"]}
         self.comm_opt_loaded = {(c["origin"], c["destination"]): 0
@@ -66,20 +67,22 @@ class Heuristic2(Experiment):
         return self.sol
 
     def check_if_stop(self):
-        # Parada (stop = 1) si no quedan comm_req que entregar o si todos los vehículos superan el límite horario
-        # todo: parar si no quedan commodities opcionales
+        # Parada (stop = 1) si no quedan comm_opt que entregar o si todos los vehículos superan el límite horario
         # posible todo: si un warehouse esta saturado y le faltan com_req para esa solución y descartarla
+        # todo: parar y desechar la solucion si no entrega los comm_req en el req_time_limit
         # lista de vehículos que ha superado el tiempo límite
         list_veh_time_over = [v for v in self.vehicles
-                              if (self.current_time[v] + self.veh_cap * self.load_time) > self.req_time_limit]
+                              if (self.current_time[v] + self.veh_cap * self.load_time) > self.opt_time_limit]
         stop = 0
-        if all(valor == 0 for valor in self.comm_req.values()):
+        if all(valor == 0 for valor in (self.comm_req.values() and self.comm_opt.values())):
             stop = 1
             for v in self.vehicles:
-                self.sol[v, self.current_warehouse[v], self.stops[v]] = (0, 0, self.current_time[v], "fin")
+                self.sol[v, self.current_warehouse[v], self.stops[v]] = \
+                    ("req", 0, 0, "opt", 0, 0, self.current_time[v],"fin")
         else:
             for v in list_veh_time_over:
-                self.sol[v, self.current_warehouse[v], self.stops[v]] = (0, 0, self.current_time[v], "fin")
+                self.sol[v, self.current_warehouse[v], self.stops[v]] = \
+                    ("req", 0, 0, "opt", 0, 0, self.current_time[v],"fin")
         if len(list_veh_time_over) == len(self.vehicles):
             stop = 1
         self.vehicles = [v for v in self.vehicles if v not in list_veh_time_over]  # remove v de self.vehicles
@@ -93,35 +96,41 @@ class Heuristic2(Experiment):
             # Estructura: self.tree{(v,w2,w3): (q1, q2, q3, t1 + t2 + t3 + te_w + te_w2 + te_w3, te_w, te_w2, te_w3)}
             flag = 1
             q1 = min(self.veh_cap, self.comm_req[self.current_warehouse[v], w2])
+            q1o = min(self.veh_cap-q1, self.comm_opt[self.current_warehouse[v], w2])
             q2 = min(self.veh_cap, self.comm_req[w2, w3])
+            q2o = min(self.veh_cap-q2, self.comm_opt[w2, w3])
             q3 = 0
+            q3o = 0
             # Si existe el 2º salto
             # Si además existe el 3º salto (de current_w a w3)
             if (w3 != self.current_warehouse[v]
-                    and self.comm_req[self.current_warehouse[v], w3] > 0
-                    and max(self.comm_req[self.current_warehouse[v], w2], self.comm_req[w2, w3]) < self.veh_cap):
-                q3 = min(self.veh_cap - max(q1, q2), self.comm_req[self.current_warehouse[v], w3])
+                    and (self.comm_req[self.current_warehouse[v], w3] + self.comm_opt[self.current_warehouse[v], w3] > 0)
+                    and max(self.comm_req[self.current_warehouse[v], w2] + self.comm_opt[self.current_warehouse[v], w2],
+                            self.comm_req[w2, w3] + self.comm_opt[w2, w3]) < self.veh_cap):
+                q3 = min(self.veh_cap - max(q1 + q1o, q2 + q2o), self.comm_req[self.current_warehouse[v], w3])
+                q3o = min(self.veh_cap - q3, self.comm_opt[self.current_warehouse[v], w3])
             counter = counter + 1
             # Si sólo existe el 1º salto
             if counter == len(self.warehouses):
-                if q2 + q3 == 0 and all((v, w2, w4) not in self.tree.keys() for w4 in self.warehouses):
+                if q2 + q2o + q3 + q3o == 0 and all((v, w2, w4) not in self.tree.keys() for w4 in self.warehouses):
                     flag = 0
                 counter = 1
 
-            t1 = (q1 + q3) * (self.load_time + self.unload_time) + self.trip_duration[self.current_warehouse[v], w2]
-            t2 = q2 * (self.load_time + self.unload_time) + self.trip_duration[w2, w3]
+            t1 = (q1 + q1o + q3 + q3o) * (self.load_time + self.unload_time) + \
+                 self.trip_duration[self.current_warehouse[v], w2]
+            t2 = (q2 + q2o) * (self.load_time + self.unload_time) + self.trip_duration[w2, w3]
             te_w = 0  # Solo necesario en stop 0
             te_w2 = 0
             te_w3 = 0
             t_max_load = self.veh_cap * self.load_time
-            t_unload_w2 = q1 * self.unload_time
-            t_unload_w3 = (q2 + q3) * self.unload_time
-            t_departure_w = self.current_time[v] + (q1 + q3) * self.load_time
+            t_unload_w2 = (q1 + q1o) * self.unload_time
+            t_unload_w3 = (q2 + q2o + q3 + q3o) * self.unload_time
+            t_departure_w = self.current_time[v] + (q1 + q1o + q3 + q3o) * self.load_time
             t_arrival_min_w2 = t_departure_w + self.trip_duration[self.current_warehouse[v], w2]
-            if flag == 0 and q2 + q3 == 0 and q1 > 0:  # un salto
+            if flag == 0 and q2 + q2o + q3 + q3o == 0 and q1 + q1o > 0:  # un salto
                 t_departure_w2 = t_arrival_min_w2 + t_unload_w2 + t_max_load
             else:
-                t_departure_w2 = t_arrival_min_w2 + t_unload_w2 + q2 * self.load_time
+                t_departure_w2 = t_arrival_min_w2 + t_unload_w2 + (q2 + q2o) * self.load_time
 
             # SIMULTANEITY VEH
             # Ventanas temporales del movimiento elegido para origen y destino
@@ -146,7 +155,7 @@ class Heuristic2(Experiment):
                     break
 
             # Definir tiempo espera salto 2 te_w3
-            if flag != 0 and q2 + q3 > 0:
+            if flag != 0 and q2 + q2o + q3 + q3o > 0:
                 t_arrival_min_w3 = t_departure_w2 + self.trip_duration[w2, w3]
                 t_departure_w3 = t_arrival_min_w3 + t_unload_w3 + t_max_load
                 selected_interval_w3 = [t_arrival_min_w3 + te_w + te_w2, t_departure_w3 + te_w + te_w2]
@@ -158,17 +167,19 @@ class Heuristic2(Experiment):
                         break
 
             # Definición self.tree
-            if flag != 0 and q2 + q3 > 0:
-                self.tree[(v, w2, w3)] = (q1, q2, q3, t1 + t2 + te_w + te_w2 + te_w3, te_w, te_w2, te_w3)
-            if flag == 0 and q2 + q3 == 0 and q1 > 0:
-                self.tree[(v, w2, "0")] = (q1, q2, q3, t1 + te_w + te_w2 + te_w3, te_w, te_w2, te_w3)
+            if flag != 0 and q2 + q2o + q3 + q3o > 0:
+                self.tree[(v, w2, w3)] = (q1, q2, q3, t1 + t2 + te_w + te_w2 + te_w3, te_w, te_w2, te_w3, q1o, q2o, q3o)
+            if flag == 0 and q2 + q2o + q3 + q3o == 0 and q1 + q1o > 0:
+                self.tree[(v, w2, "0")] = (q1, q2, q3, t1 + te_w + te_w2 + te_w3, te_w, te_w2, te_w3, q1o, q2o, q3o)
         return self.tree
 
     def select_move(self):
         # attractive
         alpha = 1/(self.veh_cap + 1)
         # dict_attractive: diccionario que recoge el atractivo de cada movimiento
-        dict_attractive = {clave: valor[0] + valor[1] * alpha + valor[2] * alpha ** 2
+        dict_attractive = {clave: valor[0] + valor[1] * alpha + valor[2] * alpha ** 2 +
+                                  (valor[7] + valor[8] * alpha + valor[9] * alpha ** 2) * alpha ** 2
+
                            for clave, valor in self.tree.items()}
         dict_sorted_attractive = {clave: valor for clave, valor in sorted(dict_attractive.items(),
                                                                           key=lambda item: item[1], reverse=True)}
@@ -195,11 +206,14 @@ class Heuristic2(Experiment):
         te_w = self.tree[self.move][4]
         te_w2 = self.tree[self.move][5]
         te_w3 = self.tree[self.move][6]
-        t_load_w = (q1 + q3) * self.load_time
-        t_load_w2 = q2 * self.load_time
+        q1o = self.tree[self.move][7]
+        q2o = self.tree[self.move][8]
+        q3o = self.tree[self.move][9]
+        t_load_w = (q1 + q1o + q3 + q3o) * self.load_time
+        t_load_w2 = (q2 + q2o) * self.load_time
         t_max_load = self.veh_cap * self.load_time
-        t_unload_w2 = q1 * self.unload_time
-        t_unload_w3 = (q2 + q3) * self.unload_time
+        t_unload_w2 = (q1 + q1o) * self.unload_time
+        t_unload_w3 = (q2 + q2o + q3 + q3o) * self.unload_time
         t_arrival_w = self.current_time[v] + te_w
         t_departure_w = t_arrival_w + t_load_w
         t_arrival_w2 = t_departure_w + self.trip_duration[w, w2] + te_w2
@@ -229,10 +243,14 @@ class Heuristic2(Experiment):
         if w3 != "0":
             self.dict_occupation_V[v].append(
                 (t_arrival_w, t_departure_w, w, {(w, w2, "req"): q1}, {(w, w3, "req"): q3}))
+            self.dict_occupation_V[v].append(
+                (t_arrival_w, t_departure_w, w, {(w, w2, "opt"): q1o}, {(w, w3, "opt"): q3o}))
             self.dict_occupation_V[v].append((t_arrival_w2, t_departure_w2, w2, {(w2, w3, "req"): q2}))
+            self.dict_occupation_V[v].append((t_arrival_w2, t_departure_w2, w2, {(w2, w3, "opt"): q2o}))
             self.dict_occupation_V[v].append((t_arrival_w3, t_departure_w3, w3, {(): ()}))
         else:
             self.dict_occupation_V[v].append((t_arrival_w, t_departure_w, w, {(w, w2, "req"): q1}))
+            self.dict_occupation_V[v].append((t_arrival_w, t_departure_w, w, {(w, w2, "opt"): q1o}))
             self.dict_occupation_V[v].append((t_arrival_w2, t_departure_w2, w2, {(): ()}))
 
         # Update dict_empty
@@ -246,32 +264,42 @@ class Heuristic2(Experiment):
                     if i < len(tupla)-1:
                         self.dict_empty_W[x].append((tupla[i][3], tupla[i + 1][2] - tupla[i][3]))
                     else:
-                        if 480 - tupla[i][3] < 0:
+                        if 600 - tupla[i][3] < 0:
                             b = 0
                         else:
-                            b = 480 - tupla[i][3]
+                            b = 600 - tupla[i][3]
                         self.dict_empty_W[x].append((tupla[i][3], b))
             else:
-                self.dict_empty_W[x].append((0, 480))
+                self.dict_empty_W[x].append((0, 600))
 
         # Update commodities
         self.comm_req[w, w2] -= q1
+        self.comm_opt[w, w2] -= q1o
         if w3 != "0":
             self.comm_req[w2, w3] -= q2
+            self.comm_opt[w2, w3] -= q2o
             if q3 > 0:
                 self.comm_req[w, w3] -= q3
+            if q3o > 0:
+                self.comm_opt[w, w3] -= q3o
         if q1 > 0:
             self.comm_req_loaded[w, w2] += q1
+        if q1o > 0:
+            self.comm_opt_loaded[w, w2] += q1o
         if w3 != "0":
             if q2 > 0:
                 self.comm_req_loaded[w2, w3] += q2
+            if q2o > 0:
+                self.comm_opt_loaded[w2, w3] += q2o
             if q3 > 0:
                 self.comm_req_loaded[w, w3] += q3
+            if q3o > 0:
+                self.comm_opt_loaded[w, w3] += q3o
         # Update solution
         # solucion: vehículo v llega a w en t_arrival_w, donde carga q1 + q3
-        self.sol[v, w, self.stops[v]] = (q1, q3, t_arrival_w)
+        self.sol[v, w, self.stops[v]] = ("req", q1, q3, "opt", q1o, q3o, t_arrival_w)
         if w3 != "0":
-            self.sol[v, w2, self.stops[v] + 1] = (q2, 0, t_arrival_w2 + t_unload_w2)
+            self.sol[v, w2, self.stops[v] + 1] = ("req", q2, 0,"opt", q2o, 0, t_arrival_w2 + t_unload_w2)
             self.current_warehouse[v] = w3
             self.current_time[v] = t_arrival_w3 + t_unload_w3
             self.stops[v] += 2

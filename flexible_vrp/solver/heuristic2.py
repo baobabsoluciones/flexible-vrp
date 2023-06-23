@@ -78,11 +78,11 @@ class Heuristic2(Experiment):
             stop = 1
             for v in self.vehicles:
                 self.sol[v, self.current_warehouse[v], self.stops[v]] = \
-                    ("req", 0, 0, "opt", 0, 0, self.current_time[v],"fin")
+                    ("req", 0, 0, "opt", 0, 0, self.current_time[v], "fin")
         else:
             for v in list_veh_time_over:
                 self.sol[v, self.current_warehouse[v], self.stops[v]] = \
-                    ("req", 0, 0, "opt", 0, 0, self.current_time[v],"fin")
+                    ("req", 0, 0, "opt", 0, 0, self.current_time[v], "fin")
         if len(list_veh_time_over) == len(self.vehicles):
             stop = 1
         self.vehicles = [v for v in self.vehicles if v not in list_veh_time_over]  # remove v de self.vehicles
@@ -106,9 +106,10 @@ class Heuristic2(Experiment):
             if (w3 != self.current_warehouse[v]
                     and (self.comm_req[self.current_warehouse[v], w3] + self.comm_opt[self.current_warehouse[v], w3] > 0)
                     and max(self.comm_req[self.current_warehouse[v], w2] + self.comm_opt[self.current_warehouse[v], w2],
-                            self.comm_req[w2, w3] + self.comm_opt[w2, w3]) < self.veh_cap):
+                            self.comm_req[w2, w3] + self.comm_opt[w2, w3]) < self.veh_cap)\
+                    and q1 + q1o + q2 + q2o > 0:
                 q3 = min(self.veh_cap - max(q1 + q1o, q2 + q2o), self.comm_req[self.current_warehouse[v], w3])
-                q3o = min(self.veh_cap - q3, self.comm_opt[self.current_warehouse[v], w3])
+                q3o = min(self.veh_cap - q3 - max(q1 + q1o, q2 + q2o), self.comm_opt[self.current_warehouse[v], w3])
             counter = counter + 1
             # Si sólo existe el 1º salto
             if counter == len(self.warehouses):
@@ -117,7 +118,7 @@ class Heuristic2(Experiment):
                 counter = 1
 
             t1 = (q1 + q1o + q3 + q3o) * (self.load_time + self.unload_time) + \
-                 self.trip_duration[self.current_warehouse[v], w2]
+                self.trip_duration[self.current_warehouse[v], w2]
             t2 = (q2 + q2o) * (self.load_time + self.unload_time) + self.trip_duration[w2, w3]
             te_w = 0  # Solo necesario en stop 0
             te_w2 = 0
@@ -177,8 +178,8 @@ class Heuristic2(Experiment):
         # attractive
         alpha = 1/(self.veh_cap + 1)
         # dict_attractive: diccionario que recoge el atractivo de cada movimiento
-        dict_attractive = {clave: valor[0] + valor[1] * alpha + valor[2] * alpha ** 2 +
-                                  (valor[7] + valor[8] * alpha + valor[9] * alpha ** 2) * alpha ** 2
+        dict_attractive = {clave: valor[0] + valor[1] * alpha + valor[2] * alpha ** 2
+                           + (valor[7] + valor[8] * alpha + valor[9] * alpha ** 2) * alpha ** 2
 
                            for clave, valor in self.tree.items()}
         dict_sorted_attractive = {clave: valor for clave, valor in sorted(dict_attractive.items(),
@@ -299,7 +300,7 @@ class Heuristic2(Experiment):
         # solucion: vehículo v llega a w en t_arrival_w, donde carga q1 + q3
         self.sol[v, w, self.stops[v]] = ("req", q1, q3, "opt", q1o, q3o, t_arrival_w)
         if w3 != "0":
-            self.sol[v, w2, self.stops[v] + 1] = ("req", q2, 0,"opt", q2o, 0, t_arrival_w2 + t_unload_w2)
+            self.sol[v, w2, self.stops[v] + 1] = ("req", q2, 0, "opt", q2o, 0, t_arrival_w2 + t_unload_w2)
             self.current_warehouse[v] = w3
             self.current_time[v] = t_arrival_w3 + t_unload_w3
             self.stops[v] += 2

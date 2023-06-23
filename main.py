@@ -16,12 +16,12 @@ config = {
 }
 
 # data = load_json("./data/simple_instance.json")
-# file_path = "data/inst_0.xlsx"
-file_path = "data/inst_1.xlsx"
-# file_path = "data/inst_2.xlsx"
+# file_path = "data/inst_1.xlsx"
+file_path = "data/inst_2.xlsx"
 # file_path = "data/inst_3.xlsx"
 # file_path = "data/inst_4.xlsx"
 # file_path = "data/inst_5.xlsx"
+# file_path = "data/inst_6.xlsx"
 # file_path = "data/dia_1.xlsx"
 # file_path = "data/dia_2.xlsx"
 # file_path = "data/dia_3.xlsx"

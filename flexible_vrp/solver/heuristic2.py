@@ -56,7 +56,7 @@ class Heuristic2(Experiment):
         self.stops = {v: 0 for v in self.vehicles}
         self.dict_occupation_W = {w: [] for w in self.warehouses}
         self.dict_occupation_V = {v: [] for v in self.vehicles}
-        self.dict_empty_W = {w: [(0, 480)] for w in self.warehouses}
+        self.dict_empty_W = {w: [(0, 600)] for w in self.warehouses}
         self.sol = {(v, self.current_warehouse[v], self.stops[v]): (0, self.current_time[v], "inicio") for v in self.vehicles}
         stop = False
         while not stop:
@@ -145,6 +145,8 @@ class Heuristic2(Experiment):
                     if tup[1] > window_duration and selected_interval_w[1] < (tup[0] + tup[1]):
                         te_w = max(tup[0] - selected_interval_w[0], 0)
                         break
+                    else:
+                        te_w = - 1
 
             # Definir tiempo espera te_w2
             selected_interval_w2 = [t_arrival_min_w2 + te_w, t_departure_w2 + te_w]
@@ -154,6 +156,8 @@ class Heuristic2(Experiment):
                 if tup[1] > window_duration and selected_interval_w2[1] < (tup[0] + tup[1]):
                     te_w2 = max(tup[0] - selected_interval_w2[0], 0)
                     break
+                else:
+                    te_w2 = - 1
 
             # Definir tiempo espera salto 2 te_w3
             if flag != 0 and q2 + q2o + q3 + q3o > 0:
@@ -166,12 +170,15 @@ class Heuristic2(Experiment):
                     if tup[1] > window_duration and selected_interval_w3[1] < (tup[0] + tup[1]):
                         te_w3 = max(tup[0] - selected_interval_w3[0], 0)
                         break
+                    else:
+                        te_w3 = - 1
 
-            # Definición self.tree
-            if flag != 0 and q2 + q2o + q3 + q3o > 0:
-                self.tree[(v, w2, w3)] = (q1, q2, q3, t1 + t2 + te_w + te_w2 + te_w3, te_w, te_w2, te_w3, q1o, q2o, q3o)
-            if flag == 0 and q2 + q2o + q3 + q3o == 0 and q1 + q1o > 0:
-                self.tree[(v, w2, "0")] = (q1, q2, q3, t1 + te_w + te_w2 + te_w3, te_w, te_w2, te_w3, q1o, q2o, q3o)
+            if (te_w and te_w2 and te_w2) >= 0:
+                # Definición self.tree
+                if flag != 0 and q2 + q2o + q3 + q3o > 0:
+                    self.tree[(v, w2, w3)] = (q1, q2, q3, t1 + t2 + te_w + te_w2 + te_w3, te_w, te_w2, te_w3, q1o, q2o, q3o)
+                if flag == 0 and q2 + q2o + q3 + q3o == 0 and q1 + q1o > 0:
+                    self.tree[(v, w2, "0")] = (q1, q2, q3, t1 + te_w + te_w2 + te_w3, te_w, te_w2, te_w3, q1o, q2o, q3o)
         return self.tree
 
     def select_move(self):

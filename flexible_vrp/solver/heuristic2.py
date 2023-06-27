@@ -26,13 +26,28 @@ class Heuristic2(Experiment):
     def solve(self, options):
         self.prepare_data()
         best_sol = dict()
+        best_sol["obj"] = 0
         # Timer to search the best solution
         t_init = timer()
         time = timer() - t_init
         self.time_limit = options["solver_config"]["TimeLimit"]
         while time <= self.time_limit:
             current_sol = self.gen_sol()
-            if current_sol["obj"] < best_sol["obj"]:
+            # todo: si le faltan com_req y si no entrega los comm_req en el req_time_limit -> desechar la solución
+            # suma ponderada de comm_loaded_opt y tiempo restante
+            if all(valor == 0 for valor in self.comm_req.values()):  # Vacío com_req
+                # suma commodities opcionales entregados
+                tot_opt = sum(self.comm_opt_loaded.values())
+                # suma tiempo restante
+                t_restante = 0
+                for clave in self.dict_occupation_V:
+                    t_restante += self.opt_time_limit - self.dict_occupation_V[clave][-1][1]
+                # obj
+                obj = tot_opt + t_restante/600
+            else:
+                obj = 0
+            current_sol["obj"] = obj
+            if current_sol["obj"] > best_sol["obj"]:
                 best_sol = current_sol
         return 1
 
@@ -55,21 +70,21 @@ class Heuristic2(Experiment):
         self.current_time = {v: 0 for v in self.vehicles}  # "t" + str(v)
         self.stops = {v: 0 for v in self.vehicles}
         self.dict_occupation_W = {w: [] for w in self.warehouses}
-        self.dict_occupation_V = {v: [] for v in self.vehicles}
+        self.dict_occupation_V = {v: [(0, 0)] for v in self.vehicles}
         self.dict_empty_W = {w: [(0, 600)] for w in self.warehouses}
         self.sol = {(v, self.current_warehouse[v], self.stops[v]): (0, self.current_time[v], "inicio") for v in self.vehicles}
         stop = False
         while not stop:
             self.explore()
-            self.select_move()
-            self.update()
+            # parar en caso de que las ventanas temporales esten saturadas
+            if self.tree:
+                self.select_move()
+                self.update()
             stop = self.check_if_stop()
         return self.sol
 
     def check_if_stop(self):
         # Parada (stop = 1) si no quedan comm_opt que entregar o si todos los vehículos superan el límite horario
-        # posible todo: si un warehouse esta saturado y le faltan com_req para esa solución y descartarla
-        # todo: parar y desechar la solucion si no entrega los comm_req en el req_time_limit
         # lista de vehículos que ha superado el tiempo límite
         list_veh_time_over = [v for v in self.vehicles
                               if (self.current_time[v] + self.veh_cap * self.load_time) > self.opt_time_limit]
@@ -86,6 +101,8 @@ class Heuristic2(Experiment):
         if len(list_veh_time_over) == len(self.vehicles):
             stop = 1
         self.vehicles = [v for v in self.vehicles if v not in list_veh_time_over]  # remove v de self.vehicles
+        if not self.tree:
+            stop = 1
         return stop
 
     def explore(self, w2=None):
@@ -173,7 +190,7 @@ class Heuristic2(Experiment):
                     else:
                         te_w3 = - 1
 
-            if (te_w and te_w2 and te_w2) >= 0:
+            if te_w != -1 and te_w2 != -1 and te_w3 != -1:
                 # Definición self.tree
                 if flag != 0 and q2 + q2o + q3 + q3o > 0:
                     self.tree[(v, w2, w3)] = (q1, q2, q3, t1 + t2 + te_w + te_w2 + te_w3, te_w, te_w2, te_w3, q1o, q2o, q3o)
@@ -193,7 +210,6 @@ class Heuristic2(Experiment):
                                                                           key=lambda item: item[1], reverse=True)}
         # Progresión geométrica para asignar probabilidades
         n = len(self.tree)  # n: número de términos de la progresión
-        # Todo: estimar r y ¿definirlo en excel?
         r = 0.5  # r: razón
         a1 = (r - 1) / ((r**n) - 1)  # a1: primer término de la progresión, siendo la suma Sn = 1
         formula_an = lambda x: a1 * (r**(x - 1))  # an: probabilidad asignada a cada término

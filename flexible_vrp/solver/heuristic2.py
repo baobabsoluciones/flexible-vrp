@@ -29,9 +29,9 @@ class Heuristic2(Experiment):
         best_sol["obj"] = 0
         # Timer to search the best solution
         t_init = timer()
-        time = timer() - t_init
+        # time = timer() - t_init
         self.time_limit = options["solver_config"]["TimeLimit"]
-        while time <= self.time_limit:
+        while timer() - t_init <= self.time_limit:
             current_sol = self.gen_sol()
             # todo: si le faltan com_req y si no entrega los comm_req en el req_time_limit -> desechar la solución
             # suma ponderada de comm_loaded_opt y tiempo restante

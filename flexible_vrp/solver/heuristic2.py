@@ -27,6 +27,7 @@ class Heuristic2(Experiment):
         self.prepare_data()
         best_sol = dict()
         best_sol["obj"] = 0
+        cont = 0
         # Timer to search the best solution
         t_init = timer()
         # time = timer() - t_init
@@ -44,6 +45,7 @@ class Heuristic2(Experiment):
                     t_restante += self.opt_time_limit - self.dict_occupation_V[clave][-1][1]
                 # obj
                 obj = tot_opt + t_restante/600
+                cont = cont + 1
             else:
                 obj = 0
             current_sol["obj"] = obj

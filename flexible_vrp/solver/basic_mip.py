@@ -177,6 +177,8 @@ class BasicMip(Experiment):
                         ]).to_dictlist(["vehicle", "stop", "warehouse", "comm_or", "comm_dest", "comm_qty",
                                         "comm_comp", "qty_arr", "load", "unload", "arr_time", "load_dur",
                                         "unload_dur", "unload_time", "dep_time", "trip_dur", "gamma"])
+        df = pd.DataFrame(data_solution)
+        df.to_excel('archivo_excel.xlsx', index=False)
         return data_solution
 
         # Example of solve method:

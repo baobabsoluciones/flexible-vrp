@@ -24,34 +24,33 @@ class Heuristic2(Experiment):
         self.average_time_d = self.instance.data["parameters"]["average_time_d"]
 
     def solve(self, options):
+        self.time_limit = options["solver_config"]["TimeLimit"]
         self.prepare_data()
         best_sol = dict()
         best_sol["obj"] = 0
         cont = 0
         # Timer to search the best solution
         t_init = timer()
-        # time = timer() - t_init
-        self.time_limit = options["solver_config"]["TimeLimit"]
         while timer() - t_init <= self.time_limit:
             current_sol = self.gen_sol()
-            # todo: si le faltan com_req y si no entrega los comm_req en el req_time_limit -> desechar la solución
-            # suma ponderada de comm_loaded_opt y tiempo restante
-            if all(valor == 0 for valor in self.comm_req.values()):  # Vacío com_req
+            # si le faltan com_req y si no entrega los comm_req en el req_time_limit -> desechar la solución
+            if self.t_fin_req <= self.req_time_limit:
                 # suma commodities opcionales entregados
                 tot_opt = sum(self.comm_opt_loaded.values())
                 # suma tiempo restante
                 t_restante = 0
                 for clave in self.dict_occupation_V:
                     t_restante += self.opt_time_limit - self.dict_occupation_V[clave][-1][1]
-                # obj
-                obj = tot_opt + t_restante/600
+                # obj = ponderación entre comm opt entregados y tiempo restante
+                obj = tot_opt + t_restante/self.opt_time_limit
+                # cont = número de soluciones generadas
                 cont = cont + 1
             else:
                 obj = 0
             current_sol["obj"] = obj
             if current_sol["obj"] > best_sol["obj"]:
                 best_sol = current_sol
-        return 1
+        return best_sol
 
     def gen_sol(self):
         # Generate dicts to store the number of commodities
@@ -73,12 +72,15 @@ class Heuristic2(Experiment):
         self.stops = {v: 0 for v in self.vehicles}
         self.dict_occupation_W = {w: [] for w in self.warehouses}
         self.dict_occupation_V = {v: [(0, 0)] for v in self.vehicles}
-        self.dict_empty_W = {w: [(0, 600)] for w in self.warehouses}
-        self.sol = {(v, self.current_warehouse[v], self.stops[v]): (0, self.current_time[v], "inicio") for v in self.vehicles}
+        self.dict_empty_W = {w: [(0, self.opt_time_limit)] for w in self.warehouses}
+        self.sol = {(v, self.current_warehouse[v], self.stops[v]): (0, self.current_time[v], "inicio")
+                    for v in self.vehicles}
+        self.flag_t_fin_req = 1
+        self.t_fin_req = self.opt_time_limit
         stop = False
         while not stop:
             self.explore()
-            # parar en caso de que las ventanas temporales esten saturadas
+            # Para en caso de que las ventanas temporales esten saturadas
             if self.tree:
                 self.select_move()
                 self.update()
@@ -103,6 +105,7 @@ class Heuristic2(Experiment):
         if len(list_veh_time_over) == len(self.vehicles):
             stop = 1
         self.vehicles = [v for v in self.vehicles if v not in list_veh_time_over]  # remove v de self.vehicles
+        # Para en caso de que las ventanas temporales esten saturadas
         if not self.tree:
             stop = 1
         return stop
@@ -112,7 +115,8 @@ class Heuristic2(Experiment):
         counter = 1
         for (v, w2, w3) in [(v, w2, w3) for v in self.vehicles for w2 in self.warehouses for w3 in self.warehouses
                             if (w3 != w2 and w2 != self.current_warehouse[v])]:
-            # Estructura: self.tree{(v,w2,w3): (q1, q2, q3, t1 + t2 + t3 + te_w + te_w2 + te_w3, te_w, te_w2, te_w3)}
+            # Estructura: self.tree{(v,w2,w3): (q1, q2, q3, te_w, te_w2, te_w3, q1o, q2o, q3o)}
+            # qX: cantidad comm_req cargada, qXo: cantidad comm_opt cargada
             flag = 1
             q1 = min(self.veh_cap, self.comm_req[self.current_warehouse[v], w2])
             q1o = min(self.veh_cap-q1, self.comm_opt[self.current_warehouse[v], w2])
@@ -120,10 +124,10 @@ class Heuristic2(Experiment):
             q2o = min(self.veh_cap-q2, self.comm_opt[w2, w3])
             q3 = 0
             q3o = 0
-            # Si existe el 2º salto
-            # Si además existe el 3º salto (de current_w a w3)
+            # Si existe el 2º salto y además existe el 3º salto (de current_w a w3)
             if (w3 != self.current_warehouse[v]
-                    and (self.comm_req[self.current_warehouse[v], w3] + self.comm_opt[self.current_warehouse[v], w3] > 0)
+                    and (self.comm_req[self.current_warehouse[v], w3] + self.comm_opt[self.current_warehouse[v], w3]
+                         > 0)
                     and max(self.comm_req[self.current_warehouse[v], w2] + self.comm_opt[self.current_warehouse[v], w2],
                             self.comm_req[w2, w3] + self.comm_opt[w2, w3]) < self.veh_cap)\
                     and q1 + q1o + q2 + q2o > 0:
@@ -139,6 +143,7 @@ class Heuristic2(Experiment):
             t1 = (q1 + q1o + q3 + q3o) * (self.load_time + self.unload_time) + \
                 self.trip_duration[self.current_warehouse[v], w2]
             t2 = (q2 + q2o) * (self.load_time + self.unload_time) + self.trip_duration[w2, w3]
+            # te: tiempos de espera para que no exista simultaneidad
             te_w = 0  # Solo necesario en stop 0
             te_w2 = 0
             te_w3 = 0
@@ -153,8 +158,6 @@ class Heuristic2(Experiment):
                 t_departure_w2 = t_arrival_min_w2 + t_unload_w2 + (q2 + q2o) * self.load_time
 
             # SIMULTANEITY VEH
-            # Ventanas temporales del movimiento elegido para origen y destino
-
             # Definir tiempo espera para s=0 te_w
             if self.stops[v] == 0:
                 selected_interval_w = [self.current_time[v], t_departure_w]
@@ -191,13 +194,13 @@ class Heuristic2(Experiment):
                         break
                     else:
                         te_w3 = - 1
-
+            # tiempos negativos indican que no hay espacio en las ventanas temporales
             if te_w != -1 and te_w2 != -1 and te_w3 != -1:
                 # Definición self.tree
                 if flag != 0 and q2 + q2o + q3 + q3o > 0:
-                    self.tree[(v, w2, w3)] = (q1, q2, q3, t1 + t2 + te_w + te_w2 + te_w3, te_w, te_w2, te_w3, q1o, q2o, q3o)
+                    self.tree[(v, w2, w3)] = (q1, q2, q3, te_w, te_w2, te_w3, q1o, q2o, q3o)
                 if flag == 0 and q2 + q2o + q3 + q3o == 0 and q1 + q1o > 0:
-                    self.tree[(v, w2, "0")] = (q1, q2, q3, t1 + te_w + te_w2 + te_w3, te_w, te_w2, te_w3, q1o, q2o, q3o)
+                    self.tree[(v, w2, "0")] = (q1, q2, q3, te_w, te_w2, te_w3, q1o, q2o, q3o)
         return self.tree
 
     def select_move(self):
@@ -205,8 +208,7 @@ class Heuristic2(Experiment):
         alpha = 1/(self.veh_cap + 1)
         # dict_attractive: diccionario que recoge el atractivo de cada movimiento
         dict_attractive = {clave: valor[0] + valor[1] * alpha + valor[2] * alpha ** 2
-                           + (valor[7] + valor[8] * alpha + valor[9] * alpha ** 2) * alpha ** 2
-
+                           + (valor[6] + valor[7] * alpha + valor[8] * alpha ** 2) * alpha ** 2
                            for clave, valor in self.tree.items()}
         dict_sorted_attractive = {clave: valor for clave, valor in sorted(dict_attractive.items(),
                                                                           key=lambda item: item[1], reverse=True)}
@@ -228,13 +230,12 @@ class Heuristic2(Experiment):
         q1 = self.tree[self.move][0]
         q2 = self.tree[self.move][1]
         q3 = self.tree[self.move][2]
-        # t1 + t2 + t3 = self.tree[self.move][3]
-        te_w = self.tree[self.move][4]
-        te_w2 = self.tree[self.move][5]
-        te_w3 = self.tree[self.move][6]
-        q1o = self.tree[self.move][7]
-        q2o = self.tree[self.move][8]
-        q3o = self.tree[self.move][9]
+        te_w = self.tree[self.move][3]
+        te_w2 = self.tree[self.move][4]
+        te_w3 = self.tree[self.move][5]
+        q1o = self.tree[self.move][6]
+        q2o = self.tree[self.move][7]
+        q3o = self.tree[self.move][8]
         t_load_w = (q1 + q1o + q3 + q3o) * self.load_time
         t_load_w2 = (q2 + q2o) * self.load_time
         t_max_load = self.veh_cap * self.load_time
@@ -251,8 +252,7 @@ class Heuristic2(Experiment):
             t_departure_w3 = t_arrival_w3 + t_unload_w3 + t_max_load
 
         # Update dict_occupation_W
-        # dict_occupation_W muestra las ventanas temporales ocupadas o reservadas
-        #   [tiempo inicio ocupación, tiempo fin ocupación]
+        # dict_occupation_W[tiempo inicio ocupación, tiempo fin ocupación] muestra las ventanas temporales ocupadas
         if self.stops[v] == 0:
             self.dict_occupation_W[w].append((v, self.stops[v], self.current_time[v] + te_w, self.current_time[v]
                                               + te_w + t_load_w))
@@ -264,8 +264,8 @@ class Heuristic2(Experiment):
         self.dict_occupation_W = {clave: sorted(values, key=lambda x: x[2]) for clave, values in
                                   self.dict_occupation_W.items()}
         # Update dict_occupation_V
-        # dict_occupation_V guarda para cada vehículo el tiempo de llegada y salida a un warehouse,
-        #   y el tipo y cantidad de commodities que carga en ese warehouse.
+        # dict_occupation_V guarda para cada vehículo el tiempo de llegada, tiempo de salida de un warehouse,
+        #   el tipo y cantidad de commodities que carga en ese warehouse.
         if w3 != "0":
             self.dict_occupation_V[v].append(
                 (t_arrival_w, t_departure_w, w, {(w, w2, "req"): q1}, {(w, w3, "req"): q3}))
@@ -290,17 +290,25 @@ class Heuristic2(Experiment):
                     if i < len(tupla)-1:
                         self.dict_empty_W[x].append((tupla[i][3], tupla[i + 1][2] - tupla[i][3]))
                     else:
-                        if 600 - tupla[i][3] < 0:
+                        if self.opt_time_limit - tupla[i][3] < 0:
                             b = 0
                         else:
-                            b = 600 - tupla[i][3]
+                            b = self.opt_time_limit - tupla[i][3]
                         self.dict_empty_W[x].append((tupla[i][3], b))
             else:
-                self.dict_empty_W[x].append((0, 600))
+                self.dict_empty_W[x].append((0, self.opt_time_limit))
 
         # Update commodities
         self.comm_req[w, w2] -= q1
         self.comm_opt[w, w2] -= q1o
+        # t_fin_req guarda el valor del tiempo cuando termina de entregar comm_req
+        if all(valor == 0 for valor in self.comm_req.values()) and self.flag_t_fin_req == 1:
+            if q3 + q2 == 0:
+                self.t_fin_req = t_arrival_w2 + t_unload_w2
+            else:
+                self.t_fin_req = t_arrival_w3 + t_unload_w3
+            self.flag_t_fin_req = 0
+
         if w3 != "0":
             self.comm_req[w2, w3] -= q2
             self.comm_opt[w2, w3] -= q2o

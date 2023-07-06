@@ -1,5 +1,6 @@
 # Class to solve the problem with a heuristic2 approach.
 import random
+import pandas as pd
 
 from timeit import default_timer as timer
 from flexible_vrp.core import Experiment, Solution
@@ -50,7 +51,10 @@ class Heuristic2(Experiment):
             current_sol["obj"] = obj
             if current_sol["obj"] > best_sol["obj"]:
                 best_sol = current_sol
-        return best_sol
+        print("Numero de soluciones obtenidas: ", cont)
+        data_json = self.get_solution(best_sol)
+        self.solution = Solution({"data": data_json})
+        return 1
 
     def gen_sol(self):
         # Generate dicts to store the number of commodities
@@ -342,3 +346,9 @@ class Heuristic2(Experiment):
             self.current_time[v] = t_arrival_w2 + t_unload_w2
             self.stops[v] += 1
         return self.sol
+
+    def get_solution(self, best_sol):
+        data_solution = best_sol
+        df = pd.DataFrame(data_solution)
+        df.to_excel('archivo_excel.xlsx', index=False)
+        return data_solution

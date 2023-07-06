@@ -101,11 +101,11 @@ class Heuristic2(Experiment):
             stop = 1
             for v in self.vehicles:
                 self.sol[v, self.current_warehouse[v], self.stops[v]] = \
-                    ("req", 0, 0, "opt", 0, 0, self.current_time[v], "fin")
+                    ("req", 0, 0, "opt", 0, 0, self.current_time[v])
         else:
             for v in list_veh_time_over:
                 self.sol[v, self.current_warehouse[v], self.stops[v]] = \
-                    ("req", 0, 0, "opt", 0, 0, self.current_time[v], "fin")
+                    ("req", 0, 0, "opt", 0, 0, self.current_time[v])
         if len(list_veh_time_over) == len(self.vehicles):
             stop = 1
         self.vehicles = [v for v in self.vehicles if v not in list_veh_time_over]  # remove v de self.vehicles
@@ -348,7 +348,40 @@ class Heuristic2(Experiment):
         return self.sol
 
     def get_solution(self, best_sol):
+        # warehouses_visited = {(v, s): w for v in model_instance.sVehicles for s in model_instance.sStops for
+        #                       w in model_instance.sWarehouses if model_instance.vAlpha[v, s, w].value == 1}
+        # trip_durations = {
+        #     (v, s): (model_instance.pTripDuration[warehouses_visited[v, s], warehouses_visited[v, s + 1]].value if
+        #              (v, s + 1) in warehouses_visited.keys() else 0) for
+        #     v in model_instance.sVehicles for s in model_instance.sStopsButLast
+        #     if (v, s) in warehouses_visited.keys()}
+        #
+        # for v in model_instance.sVehicles:
+        #     trip_durations[v, len(model_instance.sStops) - 1] = 0
         data_solution = best_sol
+        # data_solution = TupList([[v, s, w, c[0], c[1], c[2], c[3],
+        #                  model_instance.vQuantityAtArrival[v, s, c].value,
+        #                  model_instance.vLoadQuantity[v, s, c].value,
+        #                  model_instance.vUnloadQuantity[v, s, c].value,
+        #                  model_instance.vArrivalTime[v, s].value,
+        #                  model_instance.vLoadDuration[v, s].value,
+        #                  model_instance.vUnloadDuration[v, s].value,
+        #                  model_instance.vUnloadTime[v, s].value,
+        #                  model_instance.vDepartureTime[v, s].value,
+        #                  trip_durations[v, s],
+        #                  model_instance.vGamma[v, s].value]
+        #                 for v in model_instance.sVehicles
+        #                 for s in model_instance.sStops
+        #                 for w in model_instance.sWarehouses
+        #                 for c in model_instance.sCommodities
+        #                 if model_instance.vLoadQuantity[v, s, c].value +
+        #                 model_instance.vUnloadQuantity[v, s, c].value +
+        #                 model_instance.vQuantityAtArrival[v, s, c].value
+        #                 > 0
+        #                 and model_instance.vAlpha[v, s, w].value == 1
+        #                 ]).to_dictlist(["vehicle", "stop", "warehouse", "comm_or", "comm_dest", "comm_qty",
+        #                                 "comm_comp", "qty_arr", "load", "unload", "arr_time", "load_dur",
+        #                                 "unload_dur", "unload_time", "dep_time", "trip_dur", "gamma"])
         df = pd.DataFrame(data_solution)
         df.to_excel('archivo_excel.xlsx', index=False)
         return data_solution

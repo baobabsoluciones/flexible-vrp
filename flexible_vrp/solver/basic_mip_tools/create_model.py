@@ -15,7 +15,7 @@ def create_model():
     model.sStops = Set()
     model.sStopsButLast = Set()
     model.sWarehouses = Set()
-    model.sCommodities = Set(dimen=4)
+    model.sCommodities = Set(dimen=5)
 
     # Derived sets
     model.sTripDuration = Set(dimen=3)
@@ -53,52 +53,52 @@ def create_model():
 
     # Balance Constraints
 
-    def fc1_balance_commodities(model, v, s, origin, destination, quantity, compulsory):
+    def fc1_balance_commodities(model, v, s, origin, destination, quantity, compulsory, type):
         if s == 0:
-            return model.vQuantityAtArrival[v, s + 1, origin, destination, quantity, compulsory] == \
-                   model.vLoadQuantity[v, s, origin, destination, quantity, compulsory]
+            return model.vQuantityAtArrival[v, s + 1, origin, destination, quantity, compulsory, type] == \
+                   model.vLoadQuantity[v, s, origin, destination, quantity, compulsory, type]
         elif s == len(model.sStops) - 1:
-            return model.vUnloadQuantity[v, s, origin, destination, quantity, compulsory] == \
-                   model.vQuantityAtArrival[v, s, origin, destination, quantity, compulsory]
+            return model.vUnloadQuantity[v, s, origin, destination, quantity, compulsory, type] == \
+                   model.vQuantityAtArrival[v, s, origin, destination, quantity, compulsory, type]
         else:
-            return model.vQuantityAtArrival[v, s + 1, origin, destination, quantity, compulsory] == \
-               model.vQuantityAtArrival[v, s, origin, destination, quantity, compulsory] \
-               - model.vUnloadQuantity[v, s, origin, destination, quantity, compulsory] \
-               + model.vLoadQuantity[v, s, origin, destination, quantity, compulsory]
+            return model.vQuantityAtArrival[v, s + 1, origin, destination, quantity, compulsory, type] == \
+               model.vQuantityAtArrival[v, s, origin, destination, quantity, compulsory, type] \
+               - model.vUnloadQuantity[v, s, origin, destination, quantity, compulsory, type] \
+               + model.vLoadQuantity[v, s, origin, destination, quantity, compulsory, type]
 
     def fc2_cap_max(model, v, s):
         return sum(model.vQuantityAtArrival[v, s, c] for c in model.sCommodities) <= model.pVehCAP
 
-    def fc3_load_req(model, origin, destination, quantity, compulsory):
+    def fc3_load_req(model, origin, destination, quantity, compulsory, type):
         if compulsory == 1:
-            return sum(model.vLoadQuantity[v, s, origin, destination, quantity, compulsory] for v in model.sVehicles
+            return sum(model.vLoadQuantity[v, s, origin, destination, quantity, compulsory, type] for v in model.sVehicles
                        for s in model.sStops) == quantity
         else:
             return Constraint.Skip
 
-    def fc4_unload_req(model, origin, destination, quantity, compulsory):
+    def fc4_unload_req(model, origin, destination, quantity, compulsory, type):
         if compulsory == 1:
-            return sum(model.vUnloadQuantity[v, s, origin, destination, quantity, compulsory] for v in model.sVehicles
+            return sum(model.vUnloadQuantity[v, s, origin, destination, quantity, compulsory, type] for v in model.sVehicles
                        for s in model.sStops) == quantity
         else:
             return Constraint.Skip
 
-    def fc5_correct_load(model, v, s, w,  origin, destination, quantity, compulsory):
+    def fc5_correct_load(model, v, s, w,  origin, destination, quantity, compulsory, type):
         if origin == w:
-            return model.vLoadQuantity[v, s, origin, destination, quantity, compulsory] <= \
+            return model.vLoadQuantity[v, s, origin, destination, quantity, compulsory, type] <= \
                    quantity * model.vAlpha[v, s, w]
         else:
             return Constraint.Skip
 
-    def fc6_correct_unload(model, v, s, w, origin, destination, quantity, compulsory):
+    def fc6_correct_unload(model, v, s, w, origin, destination, quantity, compulsory, type):
         if destination == w:
-            return model.vUnloadQuantity[v, s, origin, destination, quantity, compulsory] <= \
+            return model.vUnloadQuantity[v, s, origin, destination, quantity, compulsory, type] <= \
                    quantity * model.vAlpha[v, s, w]
         else:
             return Constraint.Skip
 
-    def fc7_max_load_total_comm(model, origin, destination, quantity, compulsory):
-        return sum(model.vLoadQuantity[v, s, origin, destination, quantity, compulsory] for v in model.sVehicles
+    def fc7_max_load_total_comm(model, origin, destination, quantity, compulsory, type):
+        return sum(model.vLoadQuantity[v, s, origin, destination, quantity, compulsory, type] for v in model.sVehicles
                    for s in model.sStops) <= quantity
 
     def fc8_zero_unload_on_first_stop(model, v):
@@ -126,9 +126,9 @@ def create_model():
         return sum(model.vAlpha[v, s + 1, w] for w in model.sWarehouses) <= \
                 sum(model.vAlpha[v, s, w] for w in model.sWarehouses)
 
-    def fc15_unload_after_load(model, v, s, origin, destination, quantity, compulsory):
-        return sum(model.vUnloadQuantity[v, s2, origin, destination, quantity, compulsory] for s2 in model.sStops
-                   if s2 <= s) <= sum(model.vLoadQuantity[v, s2, origin, destination, quantity, compulsory]
+    def fc15_unload_after_load(model, v, s, origin, destination, quantity, compulsory, type):
+        return sum(model.vUnloadQuantity[v, s2, origin, destination, quantity, compulsory, type] for s2 in model.sStops
+                   if s2 <= s) <= sum(model.vLoadQuantity[v, s2, origin, destination, quantity, compulsory, type]
                                       for s2 in model.sStops if s2 < s)
 
     def fc16_consecutive_stops_diff_warehouse(model, v, s, w):
@@ -180,16 +180,16 @@ def create_model():
     def fc26_required_time_limit(model, v, s):
         return model.vUnloadTime[v, s] <= model.pReqTimeLimit + model.vGamma[v, s] * model.pBigM3
 
-    def fc27_load_time_limit(model, v, s, origin, destination, quantity, compulsory):
+    def fc27_load_time_limit(model, v, s, origin, destination, quantity, compulsory, type):
         if compulsory == 1:
-            return model.vLoadQuantity[v, s, origin, destination, quantity, compulsory] <= (1-model.vGamma[v, s]) \
+            return model.vLoadQuantity[v, s, origin, destination, quantity, compulsory, type] <= (1-model.vGamma[v, s]) \
                    * model.pVehCAP
         else:
             return Constraint.Skip
 
-    def fc28_unload_time_limit(model, v, s, origin, destination, quantity, compulsory):
+    def fc28_unload_time_limit(model, v, s, origin, destination, quantity, compulsory, type):
         if compulsory == 1:
-            return model.vUnloadQuantity[v, s, origin, destination, quantity, compulsory] <= (1-model.vGamma[v, s]) \
+            return model.vUnloadQuantity[v, s, origin, destination, quantity, compulsory, type] <= (1-model.vGamma[v, s]) \
                    * model.pVehCAP
         else:
             return Constraint.Skip

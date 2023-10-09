@@ -1,5 +1,8 @@
 # Class to solve the problem with a basic mip.
 import pandas as pd
+from openpyxl import Workbook
+from openpyxl.utils.dataframe import dataframe_to_rows
+from openpyxl.styles import Alignment, Border, Side
 
 from flexible_vrp.core import Experiment, Solution
 from flexible_vrp.solver.basic_mip_tools.create_model import create_model
@@ -33,7 +36,7 @@ class BasicMip(Experiment):
         # Adding the set for Commodities
         data["sCommodities"] = {
             None: [
-                (c["origin"], c["destination"], c["quantity"], c["required"])
+                (c["origin"], c["destination"], c["quantity"], c["required"], c["type"])
                 for c in self.instance.data["commodities"]
             ]
         }
@@ -142,6 +145,59 @@ class BasicMip(Experiment):
         return opt
 
     def get_solution(self, model_instance):
+    # 1º: Preparamos los datos necesarios en la solución
+
+        data_dep_time = TupList([[  # df que recoge los minutos de salida de cada w
+                         model_instance.vDepartureTime[v, s].value]
+                        for v in model_instance.sVehicles
+                        for s in model_instance.sStops
+                        for w in model_instance.sWarehouses
+                        for c in model_instance.sCommodities
+                        if model_instance.vLoadQuantity[v, s, c].value +
+                        model_instance.vUnloadQuantity[v, s, c].value +
+                        model_instance.vQuantityAtArrival[v, s, c].value
+                        > 0
+                        and model_instance.vAlpha[v, s, w].value == 1
+                        ]).to_dictlist(["T_salida"])
+
+        t_utilizado = "{:.1f}".format(data_dep_time[-1]["T_salida"] / 60)  # vble que muestra las horas utilizadas
+
+        data_arr_time = TupList([[  # df que muestra los minutos de entrada a cada w
+                         model_instance.vArrivalTime[v, s].value]
+                        for v in model_instance.sVehicles
+                        for s in model_instance.sStops
+                        for w in model_instance.sWarehouses
+                        for c in model_instance.sCommodities
+                        if model_instance.vLoadQuantity[v, s, c].value +
+                        model_instance.vUnloadQuantity[v, s, c].value +
+                        model_instance.vQuantityAtArrival[v, s, c].value
+                        > 0
+                        and model_instance.vAlpha[v, s, w].value == 1
+                        ]).to_dictlist(["T_llegada"])
+
+        def convertir_minutos_a_horas(minutos):  # Función para convertir minutos a horas
+            horas = (minutos + 1200) // 60
+            minutos = (minutos + 1200) % 60
+            segundos = int((minutos % 1) * 60)
+            if segundos >= 59:  # Redondea posibles decimales
+                minutos += 1
+                segundos = 0
+            if segundos >= 29 and segundos < 31:  # Redondea posibles decimales
+                segundos = 30
+            horas = horas % 24  # Reiniciar las horas a 0 si superan las 24
+            hora_str = "{:02d}:{:02d}:{:02d}".format(int(horas), int(minutos), segundos)
+            return hora_str
+
+        for d in data_dep_time:  # Pasamos el df data_dep_time a formato hh:mm:ss
+            minutos = d['T_salida']
+            hora = convertir_minutos_a_horas(minutos)
+            d['T_salida'] = hora
+
+        for d in data_arr_time:  # Pasamos el df data_arr_time a horas a formato hh:mm:ss
+            minutos = d['T_llegada']
+            hora = convertir_minutos_a_horas(minutos)
+            d['T_llegada'] = hora
+
         warehouses_visited = {(v, s): w for v in model_instance.sVehicles for s in model_instance.sStops for
                               w in model_instance.sWarehouses if model_instance.vAlpha[v, s, w].value == 1}
 
@@ -154,17 +210,45 @@ class BasicMip(Experiment):
         for v in model_instance.sVehicles:
             trip_durations[v, len(model_instance.sStops) - 1] = 0
 
-        data_solution = TupList([[v, s, w, c[0], c[1], c[2], c[3],
-                         model_instance.vQuantityAtArrival[v, s, c].value,
+    # Definición vble no_opt: número pallets opcionales entregados
+        no_opt = sum(model_instance.vUnloadQuantity[v, s, c].value
+            for v in model_instance.sVehicles
+            for s in model_instance.sStops
+            for c in model_instance.sCommodities
+            for w in model_instance.sWarehouses
+            if c[3] == 0 and model_instance.vLoadQuantity[v, s, c].value +
+                     model_instance.vUnloadQuantity[v, s, c].value +
+                     model_instance.vQuantityAtArrival[v, s, c].value
+                     > 0
+                     and model_instance.vAlpha[v, s, w].value == 1)
+
+    # Definición vble no_opt_total: número pallets opcionales iniciales
+        no_opt_total = self.instance.data["parameters"]["no_opt_total"]
+
+    # Definición vble no_req: número pallets requeridos entregados
+        no_req = sum(model_instance.vUnloadQuantity[v, s, c].value
+            for v in model_instance.sVehicles
+            for s in model_instance.sStops
+            for c in model_instance.sCommodities
+            for w in model_instance.sWarehouses
+            if c[3] == 1 and model_instance.vLoadQuantity[v, s, c].value +
+                     model_instance.vUnloadQuantity[v, s, c].value +
+                     model_instance.vQuantityAtArrival[v, s, c].value
+                     > 0
+                     and model_instance.vAlpha[v, s, w].value == 1)
+
+    # Definición vble no_req_total: número pallets requeridos iniciales
+        no_req_total = self.instance.data["parameters"]["no_req_total"]
+
+    # Definición vbles tiempos:
+        t_inicial = data_arr_time[0]["T_llegada"]  # Tiempo (hora) inicial de ventana temporal
+        t_final = data_dep_time[-1]["T_salida"]  # Tiempo (hora) final en que se termina el transporte
+        t_disponible = self.instance.data["parameters"]["opt_time_limit"] // 60  # Tiempo (horas) disponibles
+
+    # Df con la información detallada de cada vehículo
+        data_solution = TupList([[v, s, w, c[4],
                          model_instance.vLoadQuantity[v, s, c].value,
-                         model_instance.vUnloadQuantity[v, s, c].value,
-                         model_instance.vArrivalTime[v, s].value,
-                         model_instance.vLoadDuration[v, s].value,
-                         model_instance.vUnloadDuration[v, s].value,
-                         model_instance.vUnloadTime[v, s].value,
-                         model_instance.vDepartureTime[v, s].value,
-                         trip_durations[v, s],
-                         model_instance.vGamma[v, s].value]
+                         model_instance.vUnloadQuantity[v, s, c].value]
                         for v in model_instance.sVehicles
                         for s in model_instance.sStops
                         for w in model_instance.sWarehouses
@@ -174,12 +258,146 @@ class BasicMip(Experiment):
                         model_instance.vQuantityAtArrival[v, s, c].value
                         > 0
                         and model_instance.vAlpha[v, s, w].value == 1
-                        ]).to_dictlist(["vehicle", "stop", "warehouse", "comm_or", "comm_dest", "comm_qty",
-                                        "comm_comp", "qty_arr", "load", "unload", "arr_time", "load_dur",
-                                        "unload_dur", "unload_time", "dep_time", "trip_dur", "gamma"])
-        df = pd.DataFrame(data_solution)
-        df.to_excel('archivo_excel.xlsx', index=False)
-        return data_solution
+                        ]).to_dictlist(["Vehículo", "Parada", "Localización", "Pallet", "Carga", "Descarga"])
+
+        for i in range(len(data_solution)):
+            data_solution[i].update(data_arr_time[i])
+            data_solution[i].update(data_dep_time[i])
+
+        df_resumen = pd.DataFrame(data_solution)
+
+    # Df con el esquema de la ruta de cada vehículo
+        data_solution_ruta = TupList([[v, s, w]
+                        for v in model_instance.sVehicles
+                        for s in model_instance.sStops
+                        for w in model_instance.sWarehouses
+                        for c in model_instance.sCommodities
+                        if model_instance.vLoadQuantity[v, s, c].value +
+                        model_instance.vUnloadQuantity[v, s, c].value +
+                        model_instance.vQuantityAtArrival[v, s, c].value
+                        > 0
+                        and model_instance.vAlpha[v, s, w].value == 1
+                        ]).to_dictlist(["vehicle", "stop", "warehouse"])
+        solucion_ruta = {}
+
+        # Iterate through the data and group stops for each vehicle
+        for d in data_solution_ruta:
+            vehicle = d['vehicle']
+            stop = d['stop']
+            warehouse = d['warehouse']
+
+            if vehicle not in solucion_ruta:
+                solucion_ruta[vehicle] = {}
+
+            solucion_ruta[vehicle][stop] = warehouse
+
+        df_ruta = pd.DataFrame.from_dict(solucion_ruta, orient='index')
+        df_ruta = df_ruta.rename(columns=lambda x: f'{x}')
+
+        # Creación EXCEL
+        workbook = Workbook()
+
+        worksheet1 = workbook.active  # Obtener la primera hoja del libro de trabajo
+        worksheet1.title = 'Resumen'
+
+        vehiculos = [f'Veh {i}' for i in range(len(df_ruta))]  # Crear una lista con los nombres de los vehículos
+
+        df_ruta.insert(0, "Paradas:", vehiculos)
+
+        worksheet1['A1'] = "Ruta:"
+
+        worksheet1.append([])
+
+        for row in dataframe_to_rows(df_ruta, index=False, header=True):
+            worksheet1.append(row)
+
+        worksheet1.append([])
+
+        data_comm = [["Nº pallets", "Iniciales", "Entregados"],
+                     ["Obligatorios", no_req_total, no_req],
+                     ["Opcionales", no_opt_total, no_opt]]
+        columnas = ['Columna 1', 'Columna 2', 'Columna 3']
+        df1 = pd.DataFrame(data_comm, columns=columnas)
+        for row in dataframe_to_rows(df1, index=False, header=False):
+            worksheet1.append(row)
+
+        worksheet1.append([])
+
+        data_time = [[" ", "Disponible", "Utilizado"],
+                     ["Tiempo", str(t_disponible) + " h", str(t_utilizado) + " h"]]
+        columnas = ['Columna 1', 'Columna 2', 'Columna 3']
+        df2 = pd.DataFrame(data_time, columns=columnas)
+        for row in dataframe_to_rows(df2, index=False, header=False):
+            worksheet1.append(row)
+
+        worksheet1.append([])
+
+        data_time = [[" ", "Inicio", "Fin"],
+                     ["Hora", t_inicial, t_final]]
+        columnas = ['Columna 1', 'Columna 2', 'Columna 3']
+        df2 = pd.DataFrame(data_time, columns=columnas)
+        for row in dataframe_to_rows(df2, index=False, header=False):
+            worksheet1.append(row)
+
+
+        # Crear hojas adicionales para los datos de data_solution_resumen
+        for vehicle in df_resumen['Vehículo'].unique():
+            vehicle_data = df_resumen[df_resumen['Vehículo'] == vehicle]
+            worksheet = workbook.create_sheet(title=f'Vehículo {vehicle}')
+            for row in dataframe_to_rows(vehicle_data, index=False, header=True):
+                worksheet.append(row)
+
+        worksheet1['A3'] = "Paradas: "
+
+        # Alineación texto
+        for sheetname in workbook.sheetnames:
+            worksheet = workbook[sheetname]
+            for row in worksheet.iter_rows():
+                for cell in row:
+                    cell.alignment = Alignment(horizontal='center', vertical='center')
+
+        # Guardar el libro de trabajo en un archivo Excel
+        workbook.save('solucion_total.xlsx')
+
+        # data_solution_extra = TupList([[v, s, w, c[4], c[0], c[1], c[2], c[3],
+        #                          model_instance.vQuantityAtArrival[v, s, c].value,
+        #                          model_instance.vLoadQuantity[v, s, c].value,
+        #                          model_instance.vUnloadQuantity[v, s, c].value,
+        #                          model_instance.vArrivalTime[v, s].value,
+        #                          model_instance.vLoadDuration[v, s].value,
+        #                          model_instance.vUnloadDuration[v, s].value,
+        #                          model_instance.vUnloadTime[v, s].value,
+        #                          model_instance.vDepartureTime[v, s].value,
+        #                          trip_durations[v, s],
+        #                          model_instance.vGamma[v, s].value]
+        #                         for v in model_instance.sVehicles
+        #                         for s in model_instance.sStops
+        #                         for w in model_instance.sWarehouses
+        #                         for c in model_instance.sCommodities
+        #                         if model_instance.vLoadQuantity[v, s, c].value +
+        #                         model_instance.vUnloadQuantity[v, s, c].value +
+        #                         model_instance.vQuantityAtArrival[v, s, c].value
+        #                         > 0
+        #                         and model_instance.vAlpha[v, s, w].value == 1
+        #                         ]).to_dictlist(["vehicle", "stop", "warehouse", "comm_type", "comm_or", "comm_dest", "comm_qty",
+        #                                         "comm_comp", "qty_arr", "load", "unload", "arr_time", "load_dur",
+        #                                         "unload_dur", "unload_time", "dep_time", "trip_dur", "gamma"])
+        #
+        # # Crear un DataFrame con los datos
+        # df = pd.DataFrame(data_solution_extra)
+        #
+        # # Crear un objeto ExcelWriter para guardar los datos en un archivo Excel
+        # writer = pd.ExcelWriter('solucion_extra.xlsx', engine='xlsxwriter')
+        #
+        # # Iterar sobre los vehículos y guardar cada uno en una página separada
+        # for vehicle in df['vehicle'].unique():
+        #     vehicle_data = df[df['vehicle'] == vehicle]
+        #     vehicle_data.to_excel(writer, sheet_name=f'Vehicle {vehicle}', index=False)
+        #
+        # # Guardar y cerrar el archivo Excel
+        # writer.save()
+
+        return 1
 
         # Example of solve method:
         #

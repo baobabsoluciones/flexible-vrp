@@ -19,5 +19,6 @@ pyparsing
 pyrsistent
 pytups
 requests
+openpyxl
 urllib3
 zipp

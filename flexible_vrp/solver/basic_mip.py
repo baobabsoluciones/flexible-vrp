@@ -96,7 +96,6 @@ class BasicMip(Experiment):
 
         data = self.prepare_model_data()
 
-
         # Todo: replace this by the solve method
         model = create_model()
 
@@ -152,11 +151,8 @@ class BasicMip(Experiment):
             for s in model_instance.sStops
             for w in model_instance.sWarehouses
             for c in model_instance.sCommodities
-            if model_instance.vLoadQuantity[v, s, c].value +
-               model_instance.vUnloadQuantity[v, s, c].value +
-               model_instance.vQuantityAtArrival[v, s, c].value
-               > 0
-               and model_instance.vAlpha[v, s, w].value == 1
+            if model_instance.vLoadQuantity[v, s, c].value + model_instance.vUnloadQuantity[v, s, c].value +
+            model_instance.vQuantityAtArrival[v, s, c].value > 0 and model_instance.vAlpha[v, s, w].value == 1
         ]).to_dictlist(["T_salida"])
 
         t_utilizado = "{:.1f}".format(data_dep_time[-1]["T_salida"] / 60)  # vble que muestra las horas utilizadas
@@ -167,11 +163,8 @@ class BasicMip(Experiment):
             for s in model_instance.sStops
             for w in model_instance.sWarehouses
             for c in model_instance.sCommodities
-            if model_instance.vLoadQuantity[v, s, c].value +
-               model_instance.vUnloadQuantity[v, s, c].value +
-               model_instance.vQuantityAtArrival[v, s, c].value
-               > 0
-               and model_instance.vAlpha[v, s, w].value == 1
+            if model_instance.vLoadQuantity[v, s, c].value + model_instance.vUnloadQuantity[v, s, c].value +
+            model_instance.vQuantityAtArrival[v, s, c].value > 0 and model_instance.vAlpha[v, s, w].value == 1
         ]).to_dictlist(["T_llegada"])
 
         def convertir_minutos_a_horas(minutos):  # Función para convertir minutos a horas
@@ -257,7 +250,8 @@ class BasicMip(Experiment):
                                  model_instance.vQuantityAtArrival[v, s, c].value
                                  > 0
                                  and model_instance.vAlpha[v, s, w].value == 1
-                                 ]).to_dictlist(["Vehículo", "Parada", "Localización", "O", "D", "Q", "R", "Carga", "Descarga"])
+                                 ]).to_dictlist(["Vehículo", "Parada", "Localización", "O", "D", "Q", "R", "Carga",
+                                                 "Descarga"])
 
         for i in range(len(data_solution)):
             data_solution[i].update(data_arr_time[i])
@@ -357,33 +351,31 @@ class BasicMip(Experiment):
         # Guardar el libro de trabajo en un archivo Excel
         workbook.save('datos_salida.xlsx')
 
-        # data_solution_extra = TupList([[v, s, w, c[4], c[0], c[1], c[2], c[3],
-        #                          model_instance.vQuantityAtArrival[v, s, c].value,
-        #                          model_instance.vLoadQuantity[v, s, c].value,
-        #                          model_instance.vUnloadQuantity[v, s, c].value,
-        #                          model_instance.vArrivalTime[v, s].value,
-        #                          model_instance.vLoadDuration[v, s].value,
-        #                          model_instance.vUnloadDuration[v, s].value,
-        #                          model_instance.vUnloadTime[v, s].value,
-        #                          model_instance.vDepartureTime[v, s].value,
-        #                          trip_durations[v, s],
-        #                          model_instance.vGamma[v, s].value]
-        #                         for v in model_instance.sVehicles
-        #                         for s in model_instance.sStops
-        #                         for w in model_instance.sWarehouses
-        #                         for c in model_instance.sCommodities
-        #                         if model_instance.vLoadQuantity[v, s, c].value +
-        #                         model_instance.vUnloadQuantity[v, s, c].value +
-        #                         model_instance.vQuantityAtArrival[v, s, c].value
-        #                         > 0
-        #                         and model_instance.vAlpha[v, s, w].value == 1
-        #                         ]).to_dictlist(["vehicle", "stop", "warehouse", "comm_type", "comm_or", "comm_dest", "comm_qty",
-        #                                         "comm_comp", "qty_arr", "load", "unload", "arr_time", "load_dur",
-        #                                         "unload_dur", "unload_time", "dep_time", "trip_dur", "gamma"])
-        #
-        # # Crear un DataFrame con los datos
-        # df = pd.DataFrame(data_solution_extra)
-        #
+        data_solution_extra = TupList([[v, s, w, c[0], c[1], c[2], c[3],
+                                        model_instance.vQuantityAtArrival[v, s, c].value,
+                                        model_instance.vLoadQuantity[v, s, c].value,
+                                        model_instance.vUnloadQuantity[v, s, c].value,
+                                        model_instance.vArrivalTime[v, s].value,
+                                        model_instance.vLoadDuration[v, s].value,
+                                        model_instance.vUnloadDuration[v, s].value,
+                                        model_instance.vUnloadTime[v, s].value,
+                                        model_instance.vDepartureTime[v, s].value,
+                                        trip_durations[v, s],
+                                        model_instance.vGamma[v, s].value]
+                                       for v in model_instance.sVehicles
+                                       for s in model_instance.sStops
+                                       for w in model_instance.sWarehouses
+                                       for c in model_instance.sCommodities
+                                       if model_instance.vLoadQuantity[v, s, c].value +
+                                       model_instance.vUnloadQuantity[v, s, c].value +
+                                       model_instance.vQuantityAtArrival[v, s, c].value
+                                       > 0
+                                       and model_instance.vAlpha[v, s, w].value == 1
+                                       ]).to_dictlist(["vehicle", "stop", "warehouse", "comm_or", "comm_dest",
+                                                       "comm_qty", "comm_comp", "qty_arr", "load", "unload", "arr_time",
+                                                       "load_dur", "unload_dur", "unload_time", "dep_time", "trip_dur",
+                                                       "gamma"])
+
         # # Crear un objeto ExcelWriter para guardar los datos en un archivo Excel
         # writer = pd.ExcelWriter('solucion_extra.xlsx', engine='xlsxwriter')
         #
@@ -395,7 +387,7 @@ class BasicMip(Experiment):
         # # Guardar y cerrar el archivo Excel
         # writer.save()
 
-        return 1
+        return data_solution_extra
 
         # Example of solve method:
         #

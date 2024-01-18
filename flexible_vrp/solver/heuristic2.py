@@ -28,7 +28,9 @@ class Heuristic2(Experiment):
         self.time_limit = options["solver_config"]["TimeLimit"]
         self.prepare_data()
         best_sol = dict()
+        obj_total = sum([c["quantity"] for c in self.instance.data["commodities"] if not c["required"]])
         best_sol["obj"] = 0
+        best_sol["time"] = 0
         cont = 0
         # Timer to search the best solution
         t_init = timer()
@@ -43,7 +45,8 @@ class Heuristic2(Experiment):
                 for clave in self.dict_occupation_V:
                     t_restante += self.opt_time_limit - self.dict_occupation_V[clave][-1][1]
                 # obj = ponderación entre comm opt entregados y tiempo restante
-                obj = tot_opt + t_restante/self.opt_time_limit
+                # obj = tot_opt + t_restante/self.opt_time_limit
+                obj = tot_opt
                 # cont = número de soluciones generadas
                 cont = cont + 1
             else:
@@ -51,6 +54,9 @@ class Heuristic2(Experiment):
             current_sol["obj"] = obj
             if current_sol["obj"] > best_sol["obj"]:
                 best_sol = current_sol
+                best_sol["time"] = timer() - t_init
+                if best_sol["obj"] == obj_total:
+                    break
         print("Numero de soluciones obtenidas: ", cont)
         data_json = self.get_solution(best_sol)
         self.solution = Solution({"data": data_json})
@@ -383,5 +389,10 @@ class Heuristic2(Experiment):
         #                                 "comm_comp", "qty_arr", "load", "unload", "arr_time", "load_dur",
         #                                 "unload_dur", "unload_time", "dep_time", "trip_dur", "gamma"])
         df = pd.DataFrame(data_solution)
+        # Save solution of diferents instancias
+        # name = inst_name['name']
+        # excel_name = 'heuristic_datos_salida_' + name
+        # df.to_excel(excel_name, index=False)
+
         df.to_excel('archivo_excel.xlsx', index=False)
         return data_solution

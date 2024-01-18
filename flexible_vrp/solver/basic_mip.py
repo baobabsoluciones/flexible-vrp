@@ -40,8 +40,7 @@ class BasicMip(Experiment):
                 for c in self.instance.data["commodities"]
             ]
         }
-        # todo: estimate the number of stops for the current data. Remove from this method
-        # self.instance.data["parameters"]["no_stops"] = 22
+
         # Adding the set for Stops
         data["sStops"] = {
             None: [s for s in range(int(self.instance.data["parameters"]["no_stops"]))]
@@ -349,6 +348,9 @@ class BasicMip(Experiment):
                     cell.alignment = Alignment(horizontal='center', vertical='center')
 
         # Guardar el libro de trabajo en un archivo Excel
+        # name = 'datos_salida_' + inst_name
+        # workbook.save(name)
+
         workbook.save('datos_salida.xlsx')
 
         data_solution_extra = TupList([[v, s, w, c[0], c[1], c[2], c[3],

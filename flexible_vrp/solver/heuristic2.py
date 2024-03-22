@@ -1,6 +1,7 @@
 # Class to solve the problem with a heuristic2 approach.
 import random
 import pandas as pd
+import sys
 
 from timeit import default_timer as timer
 from flexible_vrp.core import Experiment, Solution
@@ -58,6 +59,7 @@ class Heuristic2(Experiment):
                 if best_sol["obj"] == obj_total:
                     break
         print("Numero de soluciones obtenidas: ", cont)
+        best_sol["No_sol"] = cont
         data_json = self.get_solution(best_sol)
         self.solution = Solution({"data": data_json})
         return 1
@@ -365,6 +367,147 @@ class Heuristic2(Experiment):
         # for v in model_instance.sVehicles:
         #     trip_durations[v, len(model_instance.sStops) - 1] = 0
         data_solution = best_sol
+
+        def generate_dictlist(solution):
+            dictlist = []
+            list_aux = []
+            list_aux_unload = []
+            for key, values in solution.items():
+                if isinstance(key, tuple) and len(key) == 3:
+                    v, w, s = key
+                    req_or_opt, q1, q3, _, q1o, q3o, t_arrival_w = values
+
+                    # Handle multiple records for all values distinct from zero
+                    loads = [(q, idx) for idx, q in enumerate([("q1", q1), ("q3", q3), ("q1o", q1o), ("q3o", q3o)], start=1)
+                             if q[1] != 0]
+
+                    c0 = w
+                    for load, idx in loads:
+                        c1 = None
+                        c2 = None
+                        c3 = None
+                        # Calcula si es req u opt
+                        if load[0] == "q1" or load[0] == "q3":
+                            c3 = 1
+                        elif load[0] == "q1o" or load[0] == "q3o":
+                            c3 = 0
+
+                        # Calcula el commodity c[0] y c[1]
+                        extra = 0
+                        s_unload = s + 1
+                        w_unload = None
+                        if load[0] == "q3" or load[0] == "q3o":
+                            extra = 1
+                        for key in solution.keys():
+                            if len(key) == 3:
+                                v1, w1, s1 = key
+                                if s1 == s + 1 + extra and v == v1:
+                                    c1 = w1
+                                    s_unload = s_unload + extra
+                                    w_unload = w1
+                                    break
+
+                        # Calculate c2 based on c0, c1, and c3
+                        for c in self.instance.data["commodities"]:
+                            if c["origin"] == c0 and c["destination"] == c1 and c["required"] == c3:
+                                c2 = c["quantity"]
+                                break
+
+                        # Create dictionary for the specific q
+                        q_dict = {
+                            'vehicle': v,
+                            'stop': s,
+                            'warehouse': w,
+                            'comm_or': c0,
+                            'comm_dest': c1,
+                            'comm_qty': c2,
+                            'comm_comp': c3,
+                            'load': load[1],
+                            'unload': 0
+                        }
+
+                        # Append the specific q dictionary to the list
+                        list_aux.append(q_dict)
+                        q_dict_unload = {
+                            'vehicle': v,
+                            'stop': s_unload,
+                            'warehouse': w_unload,
+                            'comm_or': c0,
+                            'comm_dest': c1,
+                            'comm_qty': c2,
+                            'comm_comp': c3,
+                            'load': 0,
+                            'unload': load[1]
+                        }
+                        list_aux_unload.append(q_dict_unload)
+
+                    total_load = sum(item['load'] for item in list_aux)
+                    trip_duration = None  # Valor predeterminado si no se encuentra ninguna coincidencia
+                    future_w = None
+                    for key in solution.keys():
+                        if len(key) == 3:
+                            v1, w1, s1 = key
+                            if s1 == s + 1 and v == v1:
+                                future_w = w1
+                                break
+                    # Iterar sobre los elementos de self.trip_duration
+                    for key, value in self.trip_duration.items():
+                        location1, location2 = key
+                        if location1 == w and location2 == future_w:
+                            trip_duration = value
+                            break
+
+                    total_unload = 0
+                    qty_arr = 0
+                    qty_arr_prev = 0
+                    for item_list in dictlist:
+                        if len(item_list) != 0:
+                            item = item_list[0]
+                            if s != 0:
+                                if item['vehicle'] == v and item['warehouse'] == w and item['stop'] == s:
+                                    total_unload += item['unload']
+                                if item['vehicle'] == v and item['stop'] == s - 1:
+                                    qty_arr = qty_arr - item['unload'] + item['load']
+                                    qty_arr_prev = item['qty_arr']
+                    qty_arr = qty_arr + qty_arr_prev
+
+                    for item in list_aux:
+                        item['qty_arr'] = qty_arr
+                        item['arr_time'] = t_arrival_w
+                        item['load_dur'] = total_load * self.load_time
+                        item['unload_dur'] = total_unload * self.unload_time
+                        item['unload_time'] = total_unload * self.unload_time + t_arrival_w
+                        item['dep_time'] = total_unload * self.unload_time + t_arrival_w + total_load * self.load_time
+                        item['trip_dur'] = trip_duration
+
+                    for item_list in dictlist:
+                        if len(item_list) != 0:
+                            item = item_list[0]
+                            if item['vehicle'] == v and item['warehouse'] == w and item['stop'] == s and item ['unload']!= 0:
+                                item['qty_arr'] = qty_arr
+                                item['arr_time'] = t_arrival_w
+                                item['load_dur'] = total_load * self.load_time
+                                item['unload_dur'] = total_unload * self.unload_time
+                                item['unload_time'] = total_unload * self.unload_time + t_arrival_w
+                                item['dep_time'] = total_unload * self.unload_time + t_arrival_w + total_load * self.load_time
+                                item['trip_dur'] = trip_duration
+
+                    # Agregar list_aux a dictlist
+                    if len(list_aux) != 0:
+                        dictlist.append(list_aux.copy())
+                        list_aux.clear()
+                    if len(list_aux_unload) != 0:
+                        dictlist.append(list_aux_unload.copy())
+                        list_aux_unload.clear()
+            tuplist = []
+
+            for sublist in dictlist:
+                tuplist.extend(sublist)
+            return tuplist
+
+        # Llamar a la función con su diccionario y datos de instancia
+        tuplist_to_dictlist = generate_dictlist(best_sol)
+
         # data_solution = TupList([[v, s, w, c[0], c[1], c[2], c[3],
         #                  model_instance.vQuantityAtArrival[v, s, c].value,
         #                  model_instance.vLoadQuantity[v, s, c].value,
@@ -394,5 +537,7 @@ class Heuristic2(Experiment):
         # excel_name = 'heuristic_datos_salida_' + name
         # df.to_excel(excel_name, index=False)
 
-        df.to_excel('archivo_excel.xlsx', index=False)
-        return data_solution
+        df.to_excel('data/data_salida/solucion.xlsx', index=False)
+        # return data_solution
+
+        return tuplist_to_dictlist

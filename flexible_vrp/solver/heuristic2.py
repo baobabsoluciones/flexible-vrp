@@ -2,6 +2,9 @@
 import random
 import pandas as pd
 import sys
+from openpyxl import Workbook
+from openpyxl.utils.dataframe import dataframe_to_rows
+from openpyxl.styles import Alignment
 
 from timeit import default_timer as timer
 from flexible_vrp.core import Experiment, Solution
@@ -359,10 +362,31 @@ class Heuristic2(Experiment):
         return self.sol
 
     def get_solution(self, best_sol):
+        """
+            Guarda la solución óptima en dos archivos Excel y prepara los datos para pasar los checks de validación.
 
+            Esta función realiza las siguientes tareas:
+            1. Almacena la solución completa en un archivo Excel que contiene la información general de todos los vehículos, paradas y tiempos.
+            2. Genera un archivo Excel separado para cada vehículo, detallando la secuencia de paradas y las operaciones de carga y descarga asociadas.
+            3. Prepara los datos resultantes para la posterior validación y comprobación, asegurando que toda la información necesaria esté en el formato adecuado para los checks de calidad.
+
+            Parámetros:
+            - best_sol: Lista de diccionarios que contienen la solución óptima para cada vehículo y parada.
+            """
         data_solution = best_sol
 
+        df = pd.DataFrame(data_solution)
+
+        df.to_excel('data/data_salida/solucion.xlsx', index=False)
+
         def transform_data(input_dict):
+            """
+                Transforma la solución óptima almacenada en un diccionario en un TupList para su validación.
+
+                Parámetros:
+                - input_dict: Diccionario que contiene la solución óptima, con detalles de vehículos, paradas,
+                  tiempos y operaciones de carga/descarga.
+                """
             result = []
 
             # Extraer vehículos únicos
@@ -379,10 +403,26 @@ class Heuristic2(Experiment):
                     if s in stops:
                         # Función auxiliar para obtener el tiempo de viaje
                         def get_trip_dur(location1, location2):
+                            """
+                                Retorna la duración del viaje entre dos ubicaciones.
+
+                                Parámetros:
+                                - location1: La ubicación de origen.
+                                - location2: La ubicación de destino.
+                                """
                             return self.trip_duration.get((location1, location2), 0)
 
                         # Función auxiliar para buscar la cantidad de la mercancía
                         def get_comm_qty(comm_or, comm_dest, comm_comp):
+                            """
+                                Busca y retorna la cantidad de una mercancía específica basada en su origen,
+                                destino y si es obligatoria o no.
+
+                                Parámetros:
+                                - comm_or: Origen de la mercancía.
+                                - comm_dest: Destino de la mercancía.
+                                - comm_comp: Componente de la mercancía que indica si es obligatoria o no.
+                                """
                             for c in self.instance.data["commodities"]:
                                 if (c["origin"] == comm_or and c["destination"] == comm_dest and c["required"]
                                         == comm_comp):
@@ -390,6 +430,12 @@ class Heuristic2(Experiment):
                             return 0
 
                         def calculate_load_dur(s):
+                            """
+                                Calcula la duración de la carga en una parada específica.
+
+                                Parámetros:
+                                - s: El índice de la parada para la que se va a calcular el tiempo de carga.
+                                """
                             q1_s1, q3_s1, q1o_s1, q3o_s1 = \
                             stops.get(s, (None, [None, None, None, None, None, None]))[1][1], \
                                 stops.get(s, (None, [None, None, None, None, None, None]))[1][2], \
@@ -399,6 +445,12 @@ class Heuristic2(Experiment):
 
                         # Función auxiliar para calcular el tiempo de descarga
                         def calculate_unload_dur(s):
+                            """
+                            Calcula la duración de la descarga en una parada específica.
+
+                            Parámetros:
+                            - s: El índice de la parada para la que se va a calcular el tiempo de descarga.
+                            """
                             if s == 0:
                                 return 0
                             elif s == 1:
@@ -566,8 +618,45 @@ class Heuristic2(Experiment):
 
         result = transform_data(data_solution)
 
-        df = pd.DataFrame(data_solution)
+        # Convertir la lista de diccionarios en un DataFrame de pandas
+        df_solution = pd.DataFrame(result)
 
-        df.to_excel('data/data_salida/solucion.xlsx', index=False)
+        # Crear un libro de trabajo de Excel usando openpyxl
+        workbook = Workbook()
+
+        # Hoja de resumen
+        worksheet_resumen = workbook.active
+        worksheet_resumen.title = 'Resumen'
+
+        # Añadir información general al resumen
+        for row in dataframe_to_rows(df_solution[['vehicle', 'stop', 'warehouse', 'arr_time', 'dep_time']], index=False,
+                                     header=True):
+            worksheet_resumen.append(row)
+
+        # Crear hojas adicionales para cada vehículo y ordenarlas
+        for vehicle in df_solution['vehicle'].unique():
+            # Filtrar datos por vehículo
+            vehicle_data = df_solution[df_solution['vehicle'] == vehicle]
+
+            # Ordenar por 'stop' (ascendente) y luego por 'unload' (descendente)
+            vehicle_data = vehicle_data.sort_values(by=['stop', 'unload'], ascending=[True, False])
+
+            # Crear una nueva hoja para el vehículo
+            worksheet_vehicle = workbook.create_sheet(title=f'{vehicle}')
+
+            # Añadir datos a la hoja del vehículo
+            for row in dataframe_to_rows(vehicle_data, index=False, header=True):
+                worksheet_vehicle.append(row)
+
+        # Alineación de texto en todas las celdas del libro
+        for sheetname in workbook.sheetnames:
+            worksheet = workbook[sheetname]
+            for row in worksheet.iter_rows():
+                for cell in row:
+                    cell.alignment = Alignment(horizontal='center', vertical='center')
+
+        # Guardar el libro de trabajo en un archivo Excel
+        workbook.save('data/data_salida/sol_veh.xlsx')
+
         # return data_solution
         return result

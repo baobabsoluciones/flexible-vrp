@@ -34,6 +34,9 @@ def solver_inst(config, fecha):
             else:
                 # heuristic
                 nuevo_excel = f"{fecha}_heuristic_{os.path.basename(file_path).split('.')[0]}.xlsx"
+                nuevo_excel_veh = f"{fecha}_heuristic_veh_{os.path.basename(file_path).split('.')[0]}.xlsx"
+                os.rename('C:/TFG/Flexible/data/data_salida/sol_veh.xlsx',
+                          f"C:/TFG/Flexible/data/data_salida/{nuevo_excel_veh}")
             os.rename('C:/TFG/Flexible/data/data_salida/solucion.xlsx',
                       f"C:/TFG/Flexible/data/data_salida/{nuevo_excel}")
             print("Solution: ", solution)

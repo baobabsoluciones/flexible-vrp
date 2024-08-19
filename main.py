@@ -7,10 +7,13 @@ import datetime
 
 
 def solver_inst(config, fecha):
+    """
+    Ejecuta todas las instancias con el solver elegido y guarda la fecha y hora de ejecución.
+
+    :param config: Configuración del solver, que incluye el solver a utilizar y las instancias a resolver.
+    :param fecha: Fecha y hora en la que se ejecuta la función, para registrar en los resultados.
+    """
     list_path = list_files_directory(directory="data", extensions=["xlsx"])
-    # list_path = [#"data/inst_1.xlsx", "data/inst_2.xlsx", "data/inst_3.xlsx", "data/inst_4.xlsx",
-    #          "data/inst_5.xlsx", "data/inst_6.xlsx", "data/inst_7_dia_1.xlsx", "data/inst_8_dia_2.xlsx",
-    #          "data/inst_9_dia_3.xlsx"]
     for file_path in list_path:
         try:
             data = read_input_data(file_path)
@@ -20,17 +23,17 @@ def solver_inst(config, fecha):
             if config["solver"] == "basic_mip":
                 if "solver_name" in config:
                     # basic_mip gurobi
-                    nombre_log = f"{fecha}_log_mip_gurobi_{file_path.split('/')[-1].split('.')[0]}.log"
-                    nuevo_excel = f"{fecha}_mip_gurobi_{file_path.split('/')[-1].split('.')[0]}.xlsx"
+                    nombre_log = f"{fecha}_log_mip_gurobi_{os.path.basename(file_path).split('.')[0]}.log"
+                    nuevo_excel = f"{fecha}_mip_gurobi_{os.path.basename(file_path).split('.')[0]}.xlsx"
                 else:
                     # basic_mip cbc
-                    nombre_log = f"{fecha}_log_mip_cbc_{file_path.split('/')[-1].split('.')[0]}.log"
-                    nuevo_excel = f"{fecha}_mip_cbc_{file_path.split('/')[-1].split('.')[0]}.xlsx"
+                    nombre_log = f"{fecha}_log_mip_cbc_{os.path.basename(file_path).split('.')[0]}.log"
+                    nuevo_excel = f"{fecha}_mip_cbc_{os.path.basename(file_path).split('.')[0]}.xlsx"
                 os.rename('C:/TFG/Flexible/data/logfile.log',
                           f"C:/TFG/Flexible/data/{nombre_log}")
             else:
                 # heuristic
-                nuevo_excel = f"{fecha}_heuristic_{file_path.split('/')[-1].split('.')[0]}.xlsx"
+                nuevo_excel = f"{fecha}_heuristic_{os.path.basename(file_path).split('.')[0]}.xlsx"
             os.rename('C:/TFG/Flexible/data/data_salida/solucion.xlsx',
                       f"C:/TFG/Flexible/data/data_salida/{nuevo_excel}")
             print("Solution: ", solution)
@@ -38,11 +41,11 @@ def solver_inst(config, fecha):
             if config["solver"] == "basic_mip":
                 if "solver_name" in config:
                     print(f"Error processing file {file_path} with gurobi: {e}")
-                    nombre_log = f"{fecha}_log_mip_gurobi_{file_path.split('/')[-1].split('.')[0]}.log"
+                    nombre_log = f"{fecha}_log_mip_gurobi_{os.path.basename(file_path).split('.')[0]}.log"
                 else:
                     # cbc
                     print(f"Error processing file {file_path} with cbc: {e}")
-                    nombre_log = f"{fecha}_log_mip_cbc_{file_path.split('/')[-1].split('.')[0]}.log"
+                    nombre_log = f"{fecha}_log_mip_cbc_{os.path.basename(file_path).split('.')[0]}.log"
                 os.rename('C:/TFG/Flexible/data/logfile.log',
                           f"C:/TFG/Flexible/data/{nombre_log}")
             continue
@@ -51,12 +54,15 @@ def solver_inst(config, fecha):
 
 fecha_hora_inicio = datetime.datetime.now().strftime("%Y%m%d_%H%M")
 
-config = {
-    "solver": "basic_mip",
-    "solver_name": "gurobi",
-    "solver_config": {"TimeLimit": 600, "gap": 0, "Heuristics": 0.0},
-}
-solver_inst(config, fecha_hora_inicio)
+# --------------------------------------------------------------------------------------------------------------
+# Elección de solver
+
+# config = {
+#     "solver": "basic_mip",
+#     "solver_name": "gurobi",
+#     "solver_config": {"TimeLimit": 3600, "gap": 0, "Heuristics": 0.0},
+# }
+# solver_inst(config, fecha_hora_inicio)
 
 # gap absoluto es: allow
 # gap relativo es: ratio
@@ -67,14 +73,16 @@ solver_inst(config, fecha_hora_inicio)
 # solver_inst(config, fecha_hora_inicio)
 
 config = {
-    "solver": "heuristic2",
-    "solver_config": {"TimeLimit": 600}
-}
+     "solver": "heuristic2",
+     "solver_config": {"TimeLimit": 600}
+ }
 solver_inst(config, fecha_hora_inicio)
 
 print(datetime.datetime.now().strftime("%Y%m%d_%H%M"))
 
 # --------------------------------------------------------------------------------------------------------------
+# Execute only one instance
+
 # Instancias
 
 # file_path = "data/inst_1.xlsx"
@@ -86,8 +94,6 @@ print(datetime.datetime.now().strftime("%Y%m%d_%H%M"))
 # file_path = "data/inst_7_dia_1.xlsx"
 # file_path = "data/inst_8_dia_2.xlsx"
 # file_path = "data/inst_9_dia_3.xlsx"
-
-# --------------------------------------------------------------------------------------------------------------
 
 # Solve the problem
 

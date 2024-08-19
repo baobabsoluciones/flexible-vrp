@@ -120,6 +120,9 @@ class Heuristic2(Experiment):
         # Para en caso de que las ventanas temporales esten saturadas
         if not self.tree:
             stop = 1
+            for v in self.vehicles:
+                self.sol[v, self.current_warehouse[v], self.stops[v]] = \
+                    ("req", 0, 0, "opt", 0, 0, self.current_time[v])
         return stop
 
     def explore(self, w2=None):
@@ -356,188 +359,215 @@ class Heuristic2(Experiment):
         return self.sol
 
     def get_solution(self, best_sol):
-        # warehouses_visited = {(v, s): w for v in model_instance.sVehicles for s in model_instance.sStops for
-        #                       w in model_instance.sWarehouses if model_instance.vAlpha[v, s, w].value == 1}
-        # trip_durations = {
-        #     (v, s): (model_instance.pTripDuration[warehouses_visited[v, s], warehouses_visited[v, s + 1]].value if
-        #              (v, s + 1) in warehouses_visited.keys() else 0) for
-        #     v in model_instance.sVehicles for s in model_instance.sStopsButLast
-        #     if (v, s) in warehouses_visited.keys()}
-        #
-        # for v in model_instance.sVehicles:
-        #     trip_durations[v, len(model_instance.sStops) - 1] = 0
+
         data_solution = best_sol
 
-        def generate_dictlist(solution):
-            dictlist = []
-            list_aux = []
-            list_aux_unload = []
-            for key, values in solution.items():
-                if isinstance(key, tuple) and len(key) == 3:
-                    v, w, s = key
-                    req_or_opt, q1, q3, _, q1o, q3o, t_arrival_w = values
+        def transform_data(input_dict):
+            result = []
 
-                    # Handle multiple records for all values distinct from zero
-                    loads = [(q, idx) for idx, q in enumerate([("q1", q1), ("q3", q3), ("q1o", q1o), ("q3o", q3o)], start=1)
-                             if q[1] != 0]
+            # Extraer vehículos únicos
+            vehicles = set(key[0] for key in input_dict.keys() if isinstance(key, tuple))
 
-                    c0 = w
-                    for load, idx in loads:
-                        c1 = None
-                        c2 = None
-                        c3 = None
-                        # Calcula si es req u opt
-                        if load[0] == "q1" or load[0] == "q3":
-                            c3 = 1
-                        elif load[0] == "q1o" or load[0] == "q3o":
-                            c3 = 0
+            for v in vehicles:
+                # Filtrar paradas para el vehículo actual
+                stops = {key[2]: (key, value) for key, value in input_dict.items() if
+                         isinstance(key, tuple) and key[0] == v}
+                max_stop = max(stops.keys())
 
-                        # Calcula el commodity c[0] y c[1]
-                        extra = 0
-                        s_unload = s + 1
-                        w_unload = None
-                        if load[0] == "q3" or load[0] == "q3o":
-                            extra = 1
-                        for key in solution.keys():
-                            if len(key) == 3:
-                                v1, w1, s1 = key
-                                if s1 == s + 1 + extra and v == v1:
-                                    c1 = w1
-                                    s_unload = s_unload + extra
-                                    w_unload = w1
-                                    break
+                for s in range(max_stop + 1):
+                    # Obtener datos de la parada actual
+                    if s in stops:
+                        # Función auxiliar para obtener el tiempo de viaje
+                        def get_trip_dur(location1, location2):
+                            return self.trip_duration.get((location1, location2), 0)
 
-                        # Calculate c2 based on c0, c1, and c3
-                        for c in self.instance.data["commodities"]:
-                            if c["origin"] == c0 and c["destination"] == c1 and c["required"] == c3:
-                                c2 = c["quantity"]
-                                break
+                        # Función auxiliar para buscar la cantidad de la mercancía
+                        def get_comm_qty(comm_or, comm_dest, comm_comp):
+                            for c in self.instance.data["commodities"]:
+                                if (c["origin"] == comm_or and c["destination"] == comm_dest and c["required"]
+                                        == comm_comp):
+                                    return c["quantity"]
+                            return 0
 
-                        # Create dictionary for the specific q
-                        q_dict = {
-                            'vehicle': v,
-                            'stop': s,
-                            'warehouse': w,
-                            'comm_or': c0,
-                            'comm_dest': c1,
-                            'comm_qty': c2,
-                            'comm_comp': c3,
-                            'load': load[1],
-                            'unload': 0
-                        }
+                        def calculate_load_dur(s):
+                            q1_s1, q3_s1, q1o_s1, q3o_s1 = \
+                            stops.get(s, (None, [None, None, None, None, None, None]))[1][1], \
+                                stops.get(s, (None, [None, None, None, None, None, None]))[1][2], \
+                                stops.get(s, (None, [None, None, None, None, None, None]))[1][4], \
+                                stops.get(s, (None, [None, None, None, None, None, None]))[1][5]
+                            return (q1_s1 + q3_s1 + q1o_s1 + q3o_s1) * self.load_time
 
-                        # Append the specific q dictionary to the list
-                        list_aux.append(q_dict)
-                        q_dict_unload = {
-                            'vehicle': v,
-                            'stop': s_unload,
-                            'warehouse': w_unload,
-                            'comm_or': c0,
-                            'comm_dest': c1,
-                            'comm_qty': c2,
-                            'comm_comp': c3,
-                            'load': 0,
-                            'unload': load[1]
-                        }
-                        list_aux_unload.append(q_dict_unload)
+                        # Función auxiliar para calcular el tiempo de descarga
+                        def calculate_unload_dur(s):
+                            if s == 0:
+                                return 0
+                            elif s == 1:
+                                q1_prev, q1o_prev = stops[s - 1][1][1], stops[s - 1][1][4]
+                                return (q1_prev + q1o_prev) * self.unload_time
+                            else:
+                                q1_prev, q1o_prev = stops[s - 1][1][1], stops[s - 1][1][4]
+                                q3_prev, q3o_prev = stops[s - 2][1][2], stops[s - 2][1][5]
+                                return (q1_prev + q1o_prev + q3_prev + q3o_prev) * self.unload_time
 
-                    total_load = sum(item['load'] for item in list_aux)
-                    trip_duration = None  # Valor predeterminado si no se encuentra ninguna coincidencia
-                    future_w = None
-                    for key in solution.keys():
-                        if len(key) == 3:
-                            v1, w1, s1 = key
-                            if s1 == s + 1 and v == v1:
-                                future_w = w1
-                                break
-                    # Iterar sobre los elementos de self.trip_duration
-                    for key, value in self.trip_duration.items():
-                        location1, location2 = key
-                        if location1 == w and location2 == future_w:
-                            trip_duration = value
-                            break
+                        # Obtener ubicaciones futuras
+                        w1 = stops.get(s + 1, (None, [None]))[0][1] if (s + 1) in stops else None
+                        w2 = stops.get(s + 2, (None, [None]))[0][1] if (s + 2) in stops else None
+                        w3 = stops.get(s + 3, (None, [None]))[0][1] if (s + 3) in stops else None
 
-                    total_unload = 0
-                    qty_arr = 0
-                    qty_arr_prev = 0
-                    for item_list in dictlist:
-                        if len(item_list) != 0:
-                            item = item_list[0]
-                            if s != 0:
-                                if item['vehicle'] == v and item['warehouse'] == w and item['stop'] == s:
-                                    total_unload += item['unload']
-                                if item['vehicle'] == v and item['stop'] == s - 1:
-                                    qty_arr = qty_arr - item['unload'] + item['load']
-                                    qty_arr_prev = item['qty_arr']
-                    qty_arr = qty_arr + qty_arr_prev
+                        # Obtener t_arrival_s1 y t_arrival_s2 de las paradas correspondientes
+                        t_arrival_s1 = stops.get(s + 1, (None, [None]))[1][
+                            -1]  # Último valor (t_arrival_w) de la parada s1
+                        t_arrival_s2 = stops.get(s + 2, (None, [None]))[1][
+                            -1]  # Último valor (t_arrival_w) de la parada s2
 
-                    for item in list_aux:
-                        item['qty_arr'] = qty_arr
-                        item['arr_time'] = t_arrival_w
-                        item['load_dur'] = total_load * self.load_time
-                        item['unload_dur'] = total_unload * self.unload_time
-                        item['unload_time'] = total_unload * self.unload_time + t_arrival_w
-                        item['dep_time'] = total_unload * self.unload_time + t_arrival_w + total_load * self.load_time
-                        item['trip_dur'] = trip_duration
+                        key, value = stops[s]
+                        if len(value) == 7:
+                            w = key[1]
+                            q1, q3, q1o, q3o, t_arrival_w = value[1], value[2], value[4], value[5], value[6]
 
-                    for item_list in dictlist:
-                        if len(item_list) != 0:
-                            item = item_list[0]
-                            if item['vehicle'] == v and item['warehouse'] == w and item['stop'] == s and item ['unload']!= 0:
-                                item['qty_arr'] = qty_arr
-                                item['arr_time'] = t_arrival_w
-                                item['load_dur'] = total_load * self.load_time
-                                item['unload_dur'] = total_unload * self.unload_time
-                                item['unload_time'] = total_unload * self.unload_time + t_arrival_w
-                                item['dep_time'] = total_unload * self.unload_time + t_arrival_w + total_load * self.load_time
-                                item['trip_dur'] = trip_duration
+                            if q1 + q3 + q3o + q1o == 0 and s == 0:
+                                trip_dur = get_trip_dur(w, w1) if w1 else 0
+                                result.append({
+                                    'vehicle': v, 'stop': s, 'warehouse': w, 'comm_or': w, 'comm_dest': w1,
+                                    'comm_qty': 0, 'comm_comp': 0, 'qty_arr': 0, 'load': 0, 'unload': 0,
+                                    'arr_time': t_arrival_w, 'load_dur': 0, 'unload_dur': 0,
+                                    'unload_time': t_arrival_w, 'dep_time': t_arrival_w, 'trip_dur': trip_dur, 'gamma': 0.0
+                                })
 
-                    # Agregar list_aux a dictlist
-                    if len(list_aux) != 0:
-                        dictlist.append(list_aux.copy())
-                        list_aux.clear()
-                    if len(list_aux_unload) != 0:
-                        dictlist.append(list_aux_unload.copy())
-                        list_aux_unload.clear()
-            tuplist = []
+                            # Si q1 es distinto de 0 (Carga)
+                            if q1 != 0:
+                                comm_qty = get_comm_qty(w, w1, 1)
+                                load_dur = (q1 + q3 + q1o + q3o) * self.load_time
+                                unload_dur = calculate_unload_dur(s)
+                                unload_time = t_arrival_w + unload_dur
+                                dep_time = unload_time + load_dur
+                                trip_dur = get_trip_dur(w, w1) if w1 else 0
 
-            for sublist in dictlist:
-                tuplist.extend(sublist)
-            return tuplist
+                                result.append({
+                                    'vehicle': v, 'stop': s, 'warehouse': w, 'comm_or': w, 'comm_dest': w1,
+                                    'comm_qty': comm_qty, 'comm_comp': 1, 'qty_arr': 0, 'load': q1, 'unload': 0,
+                                    'arr_time': t_arrival_w, 'load_dur': load_dur, 'unload_dur': unload_dur,
+                                    'unload_time': unload_time, 'dep_time': dep_time, 'trip_dur': trip_dur, 'gamma': 0.0
+                                })
 
-        # Llamar a la función con su diccionario y datos de instancia
-        tuplist_to_dictlist = generate_dictlist(best_sol)
+                                # Descargar en s+1
+                                unload_dur_s1 = calculate_unload_dur(s + 1)
+                                unload_time_s1 = t_arrival_s1 + unload_dur_s1
+                                load_dur_s1 = calculate_load_dur(s+1)
+                                dep_time_s1 = unload_time_s1 + load_dur_s1
+                                trip_dur_s1 = get_trip_dur(w1, w2) if w2 else 0
+                                gamma = 0 if unload_time_s1 < self.req_time_limit else 1
 
-        # data_solution = TupList([[v, s, w, c[0], c[1], c[2], c[3],
-        #                  model_instance.vQuantityAtArrival[v, s, c].value,
-        #                  model_instance.vLoadQuantity[v, s, c].value,
-        #                  model_instance.vUnloadQuantity[v, s, c].value,
-        #                  model_instance.vArrivalTime[v, s].value,
-        #                  model_instance.vLoadDuration[v, s].value,
-        #                  model_instance.vUnloadDuration[v, s].value,
-        #                  model_instance.vUnloadTime[v, s].value,
-        #                  model_instance.vDepartureTime[v, s].value,
-        #                  trip_durations[v, s],
-        #                  model_instance.vGamma[v, s].value]
-        #                 for v in model_instance.sVehicles
-        #                 for s in model_instance.sStops
-        #                 for w in model_instance.sWarehouses
-        #                 for c in model_instance.sCommodities
-        #                 if model_instance.vLoadQuantity[v, s, c].value +
-        #                 model_instance.vUnloadQuantity[v, s, c].value +
-        #                 model_instance.vQuantityAtArrival[v, s, c].value
-        #                 > 0
-        #                 and model_instance.vAlpha[v, s, w].value == 1
-        #                 ]).to_dictlist(["vehicle", "stop", "warehouse", "comm_or", "comm_dest", "comm_qty",
-        #                                 "comm_comp", "qty_arr", "load", "unload", "arr_time", "load_dur",
-        #                                 "unload_dur", "unload_time", "dep_time", "trip_dur", "gamma"])
+                                result.append({
+                                    'vehicle': v, 'stop': s + 1, 'warehouse': w1, 'comm_or': w, 'comm_dest': w1,
+                                    'comm_qty': comm_qty, 'comm_comp': 1, 'qty_arr': q1, 'load': 0, 'unload': q1,
+                                    'arr_time': t_arrival_s1, 'load_dur': load_dur_s1, 'unload_dur': unload_dur_s1,
+                                    'unload_time': unload_time_s1, 'dep_time': dep_time_s1, 'trip_dur': trip_dur_s1,
+                                    'gamma': gamma
+                                })
+
+                            # Si q3 es distinto de 0 (Carga)
+                            if q3 != 0:
+                                comm_qty = get_comm_qty(w, w2, 1)
+                                load_dur = (q1 + q3 + q1o + q3o) * self.load_time
+                                unload_dur = calculate_unload_dur(s)
+                                unload_time = t_arrival_w + unload_dur
+                                dep_time = unload_time + load_dur
+                                trip_dur = get_trip_dur(w, w2) if w2 else 0
+
+                                result.append({
+                                    'vehicle': v, 'stop': s, 'warehouse': w, 'comm_or': w, 'comm_dest': w2,
+                                    'comm_qty': comm_qty, 'comm_comp': 1, 'qty_arr': 0, 'load': q3, 'unload': 0,
+                                    'arr_time': t_arrival_w, 'load_dur': load_dur, 'unload_dur': unload_dur,
+                                    'unload_time': unload_time, 'dep_time': dep_time, 'trip_dur': trip_dur, 'gamma': 0.0
+                                })
+
+                                # Descargar en s+2
+                                unload_dur_s2 = calculate_unload_dur(s + 2)
+                                unload_time_s2 = t_arrival_s2 + unload_dur_s2
+                                load_dur_s2 = calculate_load_dur(s + 2)
+                                dep_time_s2 = unload_time_s2 + load_dur_s2
+                                trip_dur_s2 = get_trip_dur(w2, w3)
+                                gamma = 0 if unload_time_s2 < self.req_time_limit else 1
+
+                                result.append({
+                                    'vehicle': v, 'stop': s + 2, 'warehouse': w2, 'comm_or': w, 'comm_dest': w2,
+                                    'comm_qty': comm_qty, 'comm_comp': 1, 'qty_arr': q3, 'load': 0, 'unload': q3,
+                                    'arr_time': t_arrival_s2, 'load_dur': load_dur_s2, 'unload_dur': unload_dur_s2,
+                                    'unload_time': unload_time_s2, 'dep_time': dep_time_s2, 'trip_dur': trip_dur_s2,
+                                    'gamma': gamma
+                                })
+
+                            # Si q1o es distinto de 0 (Carga)
+                            if q1o != 0:
+                                comm_qty = get_comm_qty(w, w1, 0)
+                                load_dur = (q1 + q3 + q1o + q3o) * self.load_time
+                                unload_dur = calculate_unload_dur(s)
+                                unload_time = t_arrival_w + unload_dur
+                                dep_time = unload_time + load_dur
+                                trip_dur = get_trip_dur(w, w1) if w1 else 0
+
+                                result.append({
+                                    'vehicle': v, 'stop': s, 'warehouse': w, 'comm_or': w, 'comm_dest': w1,
+                                    'comm_qty': comm_qty, 'comm_comp': 0, 'qty_arr': 0, 'load': q1o, 'unload': 0,
+                                    'arr_time': t_arrival_w, 'load_dur': load_dur, 'unload_dur': unload_dur,
+                                    'unload_time': unload_time, 'dep_time': dep_time, 'trip_dur': trip_dur, 'gamma': 0.0
+                                })
+
+                                # Descargar en s+1
+                                unload_dur_s1 = calculate_unload_dur(s + 1)
+                                unload_time_s1 = t_arrival_s1 + unload_dur_s1
+                                load_dur_s1 = calculate_load_dur(s+1)
+                                dep_time_s1 = unload_time_s1 + load_dur_s1
+                                trip_dur_s1 = get_trip_dur(w1, w2) if w2 else 0
+                                gamma = 0 if unload_time_s1 < self.opt_time_limit else 1
+
+                                result.append({
+                                    'vehicle': v, 'stop': s + 1, 'warehouse': w1, 'comm_or': w, 'comm_dest': w1,
+                                    'comm_qty': comm_qty, 'comm_comp': 0, 'qty_arr': q1o, 'load': 0, 'unload': q1o,
+                                    'arr_time': t_arrival_s1, 'load_dur': load_dur_s1, 'unload_dur': unload_dur_s1,
+                                    'unload_time': unload_time_s1, 'dep_time': dep_time_s1, 'trip_dur': trip_dur_s1,
+                                    'gamma': gamma
+                                })
+
+                            # Si q3o es distinto de 0 (Carga)
+                            if q3o != 0:
+                                comm_qty = get_comm_qty(w, w2, 0)
+                                load_dur = (q1 + q3 + q1o + q3o) * self.load_time
+                                unload_dur = calculate_unload_dur(s)
+                                unload_time = t_arrival_w + unload_dur
+                                dep_time = unload_time + load_dur
+                                trip_dur = get_trip_dur(w, w2) if w2 else 0
+
+                                result.append({
+                                    'vehicle': v, 'stop': s, 'warehouse': w, 'comm_or': w, 'comm_dest': w2,
+                                    'comm_qty': comm_qty, 'comm_comp': 0, 'qty_arr': 0, 'load': q3o, 'unload': 0,
+                                    'arr_time': t_arrival_w, 'load_dur': load_dur, 'unload_dur': unload_dur,
+                                    'unload_time': unload_time, 'dep_time': dep_time, 'trip_dur': trip_dur, 'gamma': 0.0
+                                })
+
+                                # Descargar en s+2
+                                unload_dur_s2 = calculate_unload_dur(s + 2)
+                                unload_time_s2 = t_arrival_s2 + unload_dur_s2
+                                load_dur_s2 = calculate_load_dur(s + 2)
+                                dep_time_s2 = unload_time_s2 + load_dur_s2
+                                trip_dur_s2 = get_trip_dur(w2, w3)
+                                gamma = 0 if unload_time_s2 < self.opt_time_limit else 1
+
+                                result.append({
+                                    'vehicle': v, 'stop': s + 2, 'warehouse': w2, 'comm_or': w, 'comm_dest': w2,
+                                    'comm_qty': comm_qty, 'comm_comp': 0, 'qty_arr': q3o, 'load': 0, 'unload': q3o,
+                                    'arr_time': t_arrival_s2, 'load_dur': load_dur_s2, 'unload_dur': unload_dur_s2,
+                                    'unload_time': unload_time_s2, 'dep_time': dep_time_s2, 'trip_dur': trip_dur_s2,
+                                    'gamma': gamma
+                                })
+
+            return result
+
+        result = transform_data(data_solution)
+
         df = pd.DataFrame(data_solution)
-        # Save solution of diferents instancias
-        # name = inst_name['name']
-        # excel_name = 'heuristic_datos_salida_' + name
-        # df.to_excel(excel_name, index=False)
 
         df.to_excel('data/data_salida/solucion.xlsx', index=False)
         # return data_solution
-
-        return tuplist_to_dictlist
+        return result
